@@ -22,19 +22,32 @@ window.SHData = (function () {
   var currentActivityLevel = {
     id: 'currentActivity',
     title: '현재 활동 수준',
-    guide: '현재 집에서 각 활동을 어떻게 수행하고 있는지 선택하세요.',
+    guide: '현재 집에서 각 활동을 어떻게 수행하고 있는지 공간별로 선택하세요.',
     options: [
       { value: 'self', label: '스스로 함' },
       { value: 'assisted', label: '도움받아 함' },
       { value: 'none', label: '안함 · 해본 적 없음' }
     ],
-    items: [
-      { id: 'light', label: '조명 제어' },
-      { id: 'curtain', label: '커튼 / 블라인드 여닫기' },
-      { id: 'appliance', label: '가전제품 사용' },
-      { id: 'door', label: '현관문 여닫기' },
-      { id: 'lock', label: '잠금장치 해제' },
-      { id: 'bell', label: '초인종 확인' }
+    // 공간별로 물어봄. '도움받아 함' 또는 '안함'인 항목은 다음 단계(주요구 확인) 대상이 됨
+    groups: [
+      {
+        space: '현관', items: [
+          { id: 'door', label: '현관문 여닫기' },
+          { id: 'lock', label: '잠금장치 해제' },
+          { id: 'bell', label: '초인종 확인' }
+        ]
+      },
+      {
+        space: '거실 / 부엌', items: [
+          { id: 'light', label: '조명 제어' },
+          { id: 'appliance', label: '가전제품 사용' }
+        ]
+      },
+      {
+        space: '침실', items: [
+          { id: 'curtain', label: '커튼 / 블라인드 여닫기' }
+        ]
+      }
     ]
   };
 

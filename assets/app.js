@@ -16,9 +16,10 @@
   function blankState() {
     return {
       screen: 'intro',
-      meta: { org: '', staff: '', contact: '', needs: '', date: '',
+      meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '' },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
+      needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
       environment: {},
       performance: {}        // { 'spaceId::taskId::activityId': 0|1|2|3 }
@@ -55,10 +56,11 @@
   }
   function hasAnyData() {
     return Object.keys(state.currentActivity).length > 0 ||
+      Object.keys(state.needs).length > 0 ||
       Object.keys(state.personal).length > 0 ||
       Object.keys(state.environment).length > 0 ||
       Object.keys(state.performance).length > 0 ||
-      (state.meta.org || state.meta.needs);
+      (state.meta.org || state.meta.needsExtra);
   }
 
   function exportJSON() {
@@ -103,6 +105,7 @@
   var STEPS = [
     { id: 'intro', label: '시작' },
     { id: 'screening', label: '기초 스크리닝' },
+    { id: 'needs', label: '주요구 확인' },
     { id: 'performance', label: '공간별 수행도' },
     { id: 'result', label: '솔루션 제안' }
   ];
@@ -193,18 +196,11 @@
     var m = state.meta;
     var metaCard = el('div', { class: 'card' }, [
       el('h3', {}, ['의뢰 정보 (선택)']),
-      el('p', { class: 'section-guide' }, ['입력하면 솔루션 제안서 상단에 표시됩니다.']),
+      el('p', { class: 'section-guide' }, ['입력하면 솔루션 제안서 상단에 표시됩니다. 대상자의 주요구는 기초 스크리닝 후 "주요구 확인" 단계에서 함께 정합니다.']),
       el('div', { class: 'meta-grid' }, [
         textField('의뢰 기관', m.org, function (v) { m.org = v; }),
         textField('담당자', m.staff, function (v) { m.staff = v; }),
         textField('담당자 연락처', m.contact, function (v) { m.contact = v; })
-      ]),
-      el('div', { class: 'field', style: 'margin-top:14px' }, [
-        el('label', { class: 'field-label' }, ['대상자의 주요구 (스마트 홈을 의뢰하는 이유, 기대사항)']),
-        el('textarea', {
-          placeholder: '예) 혼자서 현관문을 열고 닫고 싶다, 밤에 안전하게 이동하고 싶다 등',
-          oninput: function (e) { m.needs = e.target.value; }
-        }, [m.needs || ''])
       ])
     ]);
 
@@ -294,24 +290,26 @@
       el('p', { class: 'page-sub' }, ['가장 먼저 현재 활동 수준을 확인한 뒤, 개인 능력과 환경을 파악합니다.'])
     ]));
 
-    /* (1) 현재 활동 수준 — 최우선 */
+    /* (1) 현재 활동 수준 — 최우선, 공간별 */
     var ca = D.currentActivityLevel;
     var caCard = el('div', { class: 'card' }, [
       el('h2', {}, ['① ' + ca.title]),
       el('p', { class: 'section-guide' }, [ca.guide])
     ]);
-    var matrix = el('div', { class: 'matrix' }, []);
-    ca.items.forEach(function (item) {
-      var row = el('div', { class: 'matrix-row' }, [
-        el('div', { class: 'row-label' }, [item.label]),
-        choiceGroup(ca.options, state.currentActivity[item.id], function (v) {
-          state.currentActivity[item.id] = v;
-          render();
-        })
-      ]);
-      matrix.appendChild(row);
+    ca.groups.forEach(function (grp) {
+      caCard.appendChild(el('div', { class: 'task-label' }, ['· ' + grp.space]));
+      var matrix = el('div', { class: 'matrix' }, []);
+      grp.items.forEach(function (item) {
+        matrix.appendChild(el('div', { class: 'matrix-row' }, [
+          el('div', { class: 'row-label' }, [item.label]),
+          choiceGroup(ca.options, state.currentActivity[item.id], function (v) {
+            state.currentActivity[item.id] = v;
+            render();
+          })
+        ]));
+      });
+      caCard.appendChild(matrix);
     });
-    caCard.appendChild(matrix);
     container.appendChild(caCard);
 
     /* (2) 개인 능력 + (3) 환경 평가 */
@@ -323,8 +321,106 @@
 
     renderActions([
       { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('intro'); } },
-      { label: '공간별 수행도 →', variant: 'btn-primary', onClick: function () { go('performance'); } }
+      { label: '주요구 확인 →', variant: 'btn-primary', onClick: function () { go('needs'); } }
     ]);
+  }
+
+  /* =========================================================
+   * 화면 1.5 : 주요구 확인
+   *   - 현재 활동 수준에서 '도움받아 함' 또는 '안함/해본 적 없음'인
+   *     활동에 대해, 스마트 홈으로 개선할지 대상자와 확인
+   * =======================================================*/
+  function pendingNeedItems() {
+    var ca = D.currentActivityLevel;
+    var out = [];
+    ca.groups.forEach(function (grp) {
+      grp.items.forEach(function (item) {
+        var lvl = state.currentActivity[item.id];
+        if (lvl === 'assisted' || lvl === 'none') {
+          out.push({ space: grp.space, item: item, level: lvl });
+        }
+      });
+    });
+    return out;
+  }
+
+  function levelPhrase(level) {
+    return level === 'assisted'
+      ? '도움을 받아 하고 있습니다'
+      : '하지 않거나 해본 적이 없습니다';
+  }
+
+  function renderNeeds() {
+    var pending = pendingNeedItems();
+    var container = el('div', {}, [
+      el('h1', { class: 'page-title' }, ['주요구 확인']),
+      el('p', { class: 'page-sub' }, ['기초 스크리닝에서 스스로 수행이 어려운 것으로 확인된 활동입니다. 각 항목을 대상자와 함께 확인하여, 스마트 홈으로 개선할지 선택하세요. "예"로 선택한 항목이 대상자의 주요구가 됩니다.'])
+    ]);
+
+    var card = el('div', { class: 'card' }, []);
+    if (pending.length === 0) {
+      card.appendChild(el('div', { class: 'empty-state' }, [
+        '현재 활동 수준에서 "도움받아 함" 또는 "안함·해본 적 없음"으로 표시된 활동이 없습니다.',
+        el('br', {}, []),
+        '필요한 주요구가 있으면 아래에 직접 입력하세요.'
+      ]));
+    } else {
+      pending.forEach(function (p) {
+        var chosen = state.needs[p.item.id]; // true / false / undefined
+        card.appendChild(el('div', { class: 'need-item' }, [
+          el('div', { class: 'need-q' }, [
+            el('span', { class: 'need-space' }, [p.space]),
+            '현재 ‘' + p.item.label + '’을(를) ' + levelPhrase(p.level) + '. ',
+            el('strong', {}, ['스마트 홈으로 수정하여 스스로 할 수 있게 할까요?'])
+          ]),
+          el('div', { class: 'choices' }, [
+            el('button', {
+              class: 'choice-chip' + (chosen === true ? ' selected' : ''),
+              type: 'button',
+              onclick: function () { state.needs[p.item.id] = (chosen === true) ? undefined : true; render(); }
+            }, ['예 — 주요구로 반영']),
+            el('button', {
+              class: 'choice-chip' + (chosen === false ? ' selected' : ''),
+              type: 'button',
+              onclick: function () { state.needs[p.item.id] = (chosen === false) ? undefined : false; render(); }
+            }, ['아니오'])
+          ])
+        ]));
+      });
+    }
+    container.appendChild(card);
+
+    // 기타 주요구 자유 입력
+    container.appendChild(el('div', { class: 'card' }, [
+      el('h3', {}, ['기타 주요구 (선택)']),
+      el('p', { class: 'section-guide' }, ['위 목록 외에 대상자가 스마트 홈을 의뢰하는 이유·기대사항이 있으면 입력하세요.']),
+      el('textarea', {
+        placeholder: '예) 밤에 안전하게 이동하고 싶다, 손님 응대를 혼자 하고 싶다 등',
+        oninput: function (e) { state.meta.needsExtra = e.target.value; saveState(); }
+      }, [state.meta.needsExtra || ''])
+    ]));
+
+    var chosenCount = confirmedNeeds().length;
+    app.innerHTML = '';
+    app.appendChild(container);
+    renderActions([
+      { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('screening'); } },
+      { label: '공간별 수행도 →' + (chosenCount ? ' (' + chosenCount + ')' : ''), variant: 'btn-primary', onClick: function () { go('performance'); } }
+    ]);
+  }
+
+  // '예'로 확인된 주요구 목록
+  function confirmedNeeds() {
+    var ca = D.currentActivityLevel;
+    var out = [];
+    ca.groups.forEach(function (grp) {
+      grp.items.forEach(function (item) {
+        if (state.needs[item.id] === true) {
+          out.push({ space: grp.space, label: item.label, level: state.currentActivity[item.id] });
+        }
+      });
+    });
+    return out;
   }
 
   function renderFieldCard(title, group, store) {
@@ -418,7 +514,7 @@
 
     var limited = collectLimitedActivities();
     renderActions([
-      { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('screening'); } },
+      { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('needs'); } },
       {
         label: '솔루션 도출 (' + limited.length + ') →',
         variant: 'btn-primary',
@@ -470,10 +566,30 @@
       el('h1', { class: 'page-title' }, ['스마트 홈 솔루션 제안서']),
       el('div', { class: 'report-meta' }, ['작성일: ', el('b', {}, [today])]),
       m.org ? el('div', { class: 'report-meta' }, ['의뢰 기관: ', el('b', {}, [m.org])]) : null,
-      m.staff ? el('div', { class: 'report-meta' }, ['담당자: ', el('b', {}, [m.staff]), m.contact ? (' (' + m.contact + ')') : '']) : null,
-      m.needs ? el('div', { class: 'note', style: 'margin-top:12px' }, [el('strong', {}, ['주요구: ']), m.needs]) : null
+      m.staff ? el('div', { class: 'report-meta' }, ['담당자: ', el('b', {}, [m.staff]), m.contact ? (' (' + m.contact + ')') : '']) : null
     ]);
     container.appendChild(headCard);
+
+    /* --- 대상자의 주요구 (주요구 확인 단계 결과) --- */
+    var goals = confirmedNeeds();
+    if (goals.length > 0 || m.needsExtra) {
+      var goalsCard = el('div', { class: 'card' }, [el('h3', {}, ['대상자의 주요구'])]);
+      if (goals.length > 0) {
+        goalsCard.appendChild(el('ul', { class: 'goal-list' }, goals.map(function (g) {
+          return el('li', {}, [
+            el('span', { class: 'goal-space' }, [g.space]),
+            g.label,
+            el('span', { class: 'goal-tail' }, [' — 스마트 홈으로 스스로 수행 목표'])
+          ]);
+        })));
+      }
+      if (m.needsExtra) {
+        goalsCard.appendChild(el('div', { class: 'note', style: 'margin-top:10px' }, [
+          el('strong', {}, ['기타: ']), m.needsExtra
+        ]));
+      }
+      container.appendChild(goalsCard);
+    }
 
     /* --- 대상자 정보 요약표 (기초 스크리닝 반영) --- */
     container.appendChild(renderProfileCard());
@@ -853,6 +969,7 @@
     renderStepbar();
     if (state.screen === 'intro') renderIntro();
     else if (state.screen === 'screening') renderScreening();
+    else if (state.screen === 'needs') renderNeeds();
     else if (state.screen === 'performance') renderPerformance();
     else if (state.screen === 'result') renderResult();
   }
