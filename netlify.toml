@@ -1,0 +1,9 @@
+# Netlify 배포 설정 — 별도 빌드가 필요 없는 정적 사이트
+[build]
+  publish = "."
+
+# 정적 자원 캐싱 (선택)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

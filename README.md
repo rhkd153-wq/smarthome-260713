@@ -38,7 +38,27 @@
   python3 -m http.server 8000
   # 브라우저에서 http://localhost:8000 접속
   ```
-- **웹 배포**: GitHub Pages 등 정적 호스팅에 그대로 올리면 됩니다.
+- **웹 배포**: GitHub Pages, Netlify 등 정적 호스팅에 그대로 올리면 됩니다.
+
+## Netlify 배포 (누구나 사용할 수 있는 공개 URL)
+
+빌드가 필요 없는 정적 사이트라, 아래 두 방법 중 하나로 몇 분 만에 공개할 수 있습니다.
+
+### 방법 A. 드래그 앤 드롭 (가장 빠름, GitHub 불필요)
+1. https://app.netlify.com/drop 접속 (Netlify 로그인)
+2. 이 저장소 폴더(또는 배포용 zip의 압축을 푼 폴더)를 페이지에 끌어다 놓기
+3. 자동으로 `https://<임의이름>.netlify.app` 공개 URL 생성 → 완료
+
+### 방법 B. GitHub 연동 (변경 시 자동 재배포, 권장)
+1. https://app.netlify.com → **Add new site → Import an existing project**
+2. GitHub 연결 후 이 저장소(`smarthome-260713`) 선택
+3. 설정값:
+   - **Branch to deploy**: 배포할 브랜치 선택
+   - **Build command**: 비워 둠 (없음)
+   - **Publish directory**: `.` (루트) — `netlify.toml`에 이미 설정됨
+4. **Deploy** → 공개 URL 생성. 이후 저장소에 푸시하면 자동 재배포됩니다.
+
+> 사이트 이름(`***.netlify.app`)은 Netlify 사이트 설정의 **Site name**에서 원하는 이름으로 바꿀 수 있습니다.
 
 ## 파일 구조
 
