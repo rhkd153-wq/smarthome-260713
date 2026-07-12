@@ -17,7 +17,7 @@
     return {
       screen: 'intro',
       meta: { org: '', staff: '', contact: '', needs: '', date: '',
-              goal: '', budget: '', scenario: '' },
+              goal: '', budget: '', scenario: '', kitOverride: '' },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
       environment: {},
@@ -531,8 +531,16 @@
     }
     container.appendChild(body);
 
+    /* --- 키트 구성 + 통합 기기 목록 --- */
+    if (limited.length > 0) container.appendChild(renderKitCard(limited, rec));
+
     /* --- 중재 계획 및 유의사항 (처리 과정 반영) --- */
     container.appendChild(renderInterventionCard());
+
+    /* --- 근거 출처 (인쇄 시에도 표기) --- */
+    container.appendChild(el('div', { class: 'report-source' }, [
+      '근거: 스마트 홈 가정 환경 수정 프로그램 매뉴얼 (문광태 외, 보건복지부 2023) · 부천대학교 작업치료학과'
+    ]));
 
     app.innerHTML = '';
     app.appendChild(container);
@@ -671,6 +679,123 @@
       ]),
       techList
     ]);
+  }
+
+  /* =========================================================
+   * 키트 구성 + 통합 기기 목록
+   * =======================================================*/
+  // 기본 키트 등급을 IoT 사용 경험으로 판정 (사용자가 변경 가능)
+  function defaultKitKey() {
+    return state.environment.iotExperience === 'using' ? 'advanced' : 'beginner';
+  }
+  function activeKitKey() {
+    return state.meta.kitOverride || defaultKitKey();
+  }
+
+  // 제한 활동 → 권장 경로(Wi-Fi/BLE) 기준으로 통합 기기 목록 산출
+  function computeDeviceList(limited, rec) {
+    var preferBLE = !!(rec && rec.wifiWarning);
+    var map = {}; // name -> { network, tier, activities:Set-like array }
+    limited.forEach(function (r) {
+      var opts = r.activity.tech;
+      var pick = null;
+      if (preferBLE) pick = opts.filter(function (o) { return o.network === 'BLE'; })[0];
+      pick = pick || opts.filter(function (o) { return o.network === 'Wi-Fi'; })[0] || opts[0];
+      if (!pick) return;
+      pick.devices.forEach(function (dev) {
+        if (!map[dev]) {
+          map[dev] = {
+            name: dev,
+            network: pick.network,
+            tier: D.deviceTier[dev] || 'beginner',
+            activities: []
+          };
+        }
+        var lbl = r.space.label + ' · ' + r.activity.label;
+        if (map[dev].activities.indexOf(lbl) === -1) map[dev].activities.push(lbl);
+      });
+    });
+    return Object.keys(map).map(function (k) { return map[k]; })
+      .sort(function (a, b) { return b.activities.length - a.activities.length; });
+  }
+
+  function renderKitCard(limited, rec) {
+    var kitKey = activeKitKey();
+    var kit = D.kitLevels[kitKey];
+    var devices = computeDeviceList(limited, rec);
+    var beginnerDevs = devices.filter(function (d) { return d.tier === 'beginner'; });
+    var advancedDevs = devices.filter(function (d) { return d.tier === 'advanced'; });
+
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['키트 구성 및 통합 기기 목록'])
+    ]);
+
+    // 등급 선택 토글
+    var toggle = el('div', { class: 'kit-toggle no-print' }, [
+      el('span', { class: 'kit-toggle-label' }, ['권장 등급:']),
+      kitButton('beginner', kitKey),
+      kitButton('advanced', kitKey)
+    ]);
+    card.appendChild(toggle);
+
+    // 등급 배지 + 설명
+    card.appendChild(el('div', { class: 'kit-head' }, [
+      el('span', { class: 'kit-badge kit-' + kit.key }, [kit.title]),
+      state.meta.kitOverride ? null : el('span', { class: 'kit-auto' }, ['(자동 판정)'])
+    ]));
+    card.appendChild(el('p', { class: 'section-guide' }, [kit.desc]));
+
+    if (rec && rec.wifiWarning) {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, ['경로 안내: ']),
+        'Wi-Fi 미보유로 BLE 우선 경로 기준의 기기 목록입니다. Wi-Fi 구축 후에는 스마트 스위치·허브 기반으로 확장할 수 있습니다.'
+      ]));
+    }
+
+    // 초보자 키트 (기본 구성)
+    card.appendChild(deviceTierBlock('기본 구성 (초보자 키트)', beginnerDevs, 'beginner'));
+    // 숙련자 키트 (확장 구성) — 숙련자 등급일 때 강조, 초보자 등급일 때는 '확장 옵션'으로 표기
+    var advTitle = kitKey === 'advanced' ? '확장 구성 (숙련자 키트)' : '확장 옵션 (숙련자 키트 · 필요 시)';
+    card.appendChild(deviceTierBlock(advTitle, advancedDevs, 'advanced'));
+
+    return card;
+  }
+
+  function kitButton(key, activeKey) {
+    var kit = D.kitLevels[key];
+    return el('button', {
+      class: 'choice-chip' + (key === activeKey ? ' selected' : ''),
+      type: 'button',
+      onclick: function () {
+        // 자동 판정값과 같으면 override 해제
+        state.meta.kitOverride = (key === defaultKitKey()) ? '' : key;
+        render();
+      }
+    }, [kit.title]);
+  }
+
+  function deviceTierBlock(title, devs, tier) {
+    var block = el('div', { class: 'kit-block' }, [
+      el('div', { class: 'kit-block-title' }, [title, el('span', { class: 'kit-count' }, [' ' + devs.length + '종'])])
+    ]);
+    if (devs.length === 0) {
+      block.appendChild(el('div', { class: 'kit-empty' }, ['해당 구성에 필요한 기기가 없습니다.']));
+      return block;
+    }
+    var list = el('div', { class: 'device-list' }, []);
+    devs.forEach(function (d) {
+      var netCls = d.network === 'BLE' ? 'net-tag net-ble' : 'net-tag net-wifi';
+      list.appendChild(el('div', { class: 'device-item' }, [
+        el('div', { class: 'device-top' }, [
+          el('span', { class: netCls }, [d.network]),
+          el('span', { class: 'device-name' }, [d.name]),
+          el('span', { class: 'device-count' }, [d.activities.length + '개 활동'])
+        ]),
+        el('div', { class: 'device-acts' }, [d.activities.join(' · ')])
+      ]));
+    });
+    block.appendChild(list);
+    return block;
   }
 
   function resetAll() {

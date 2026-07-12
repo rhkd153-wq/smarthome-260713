@@ -280,6 +280,13 @@ window.SHData = (function () {
             {
               id: 'alert', label: '시스템 상황 알림',
               tech: [{ network: 'Wi-Fi', devices: ['스마트 사이렌', '스마트 무드등'] }]
+            },
+            {
+              id: 'lightswitch', label: '조명 스위치 켜기 · 끄기',
+              tech: [
+                { network: 'BLE', devices: ['스위치 로봇'] },
+                { network: 'Wi-Fi', devices: ['스마트 스위치', '스마트 허브'] }
+              ]
             }
           ]
         }
@@ -367,8 +374,8 @@ window.SHData = (function () {
           label: '화장실 관리',
           activities: [
             {
-              id: 'humidity', label: '적절한 습도 유지',
-              tech: [{ network: 'Wi-Fi', devices: ['스마트 플러그', '온습도 센서', '스마트 허브'] }]
+              id: 'humidity', label: '실시간 온습도 모니터링',
+              tech: [{ network: 'Wi-Fi', devices: ['온습도 센서', '스마트 허브'] }]
             },
             {
               id: 'fan', label: '환풍기 켜기 · 끄기',
@@ -400,6 +407,53 @@ window.SHData = (function () {
     none: '스마트폰 미보유 — 스마트 스피커·전용 리모컨 기반 검토'
   };
 
+  /* =========================================================
+   * 키트 구성 (강의록 34p: 초보자 키트 / 숙련자 키트)
+   *  - 기기를 설치 난이도에 따라 두 등급으로 분류
+   *    · beginner: 플러그앤플레이 (설정 간단, 별도 배선/설치 최소)
+   *    · advanced: 허브·센서·자동화 기반 (설치·연동 필요)
+   * =======================================================*/
+  var deviceTier = {
+    // 초보자 키트 (플러그앤플레이)
+    '스마트 플러그': 'beginner',
+    '스마트 리모컨 허브': 'beginner',
+    '스마트 스피커': 'beginner',
+    '스위치 로봇': 'beginner',
+    '스마트 무드등': 'beginner',
+    '스마트 초인종': 'beginner',
+    '스마트 카메라': 'beginner',
+    '웨어러블 디바이스': 'beginner',
+    '스마트 체중계': 'beginner',
+    '스마트 펫 음식조절기': 'beginner',
+    '스마트 사이렌': 'beginner',
+    '스마트 에어컨': 'beginner',
+    '스마트 공기청정기': 'beginner',
+    '스마트 가습기': 'beginner',
+    // 숙련자 키트 (허브·센서·자동화)
+    '스마트 허브': 'advanced',
+    '스마트 스위치': 'advanced',
+    '스마트 잠금장치': 'advanced',
+    '스마트 커튼/블라인드': 'advanced',
+    '조도센서': 'advanced',
+    '온습도 센서': 'advanced',
+    '동작 감지기': 'advanced',
+    '문 센서': 'advanced',
+    '스윙식 자동문': 'advanced'
+  };
+
+  var kitLevels = {
+    beginner: {
+      key: 'beginner',
+      title: '초보자 키트',
+      desc: '설정이 간단한 플러그앤플레이 기기 중심 구성입니다. IoT 사용 경험이 적거나 디지털 리터러시 지원이 필요한 대상자에게 우선 권장합니다.'
+    },
+    advanced: {
+      key: 'advanced',
+      title: '숙련자 키트',
+      desc: '허브·센서·자동화 시나리오를 포함한 확장 구성입니다. IoT 사용 경험이 있고 다양한 기기 연동을 원하는 대상자에게 권장합니다.'
+    }
+  };
+
   // 수행도 척도 (양식지 2)
   var performanceScale = {
     guide: '현재 수행 정도를 아래 기준에 따라 선택하세요. 수행 경험이 없으면 "미경험"을 선택합니다.',
@@ -418,6 +472,8 @@ window.SHData = (function () {
     spaces: spaces,
     performanceScale: performanceScale,
     controlInterfaces: controlInterfaces,
-    platformHint: platformHint
+    platformHint: platformHint,
+    deviceTier: deviceTier,
+    kitLevels: kitLevels
   };
 })();
