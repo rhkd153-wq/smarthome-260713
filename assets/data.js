@@ -380,6 +380,26 @@ window.SHData = (function () {
     }
   ];
 
+  /* =========================================================
+   * 제어 인터페이스 (양식지 3: 22항목 중 "제어 인터페이스")
+   *  - 개인 능력에 따라 권장 제어 방식을 도출하는 데 사용
+   * =======================================================*/
+  var controlInterfaces = {
+    touchscreen: '터치스크린 (스마트폰 앱)',
+    speaker: '스마트 스피커 (음성)',
+    remote: '리모컨',
+    bigswitch: '큰 스위치',
+    robot: '스위치 로봇',
+    automation: '자동화 시나리오 · 센서 기반'
+  };
+
+  // 플랫폼 힌트 (OS 기반)
+  var platformHint = {
+    android: 'Google Home · SmartThings 계열',
+    ios: 'Apple 홈 · Siri 계열',
+    none: '스마트폰 미보유 — 스마트 스피커·전용 리모컨 기반 검토'
+  };
+
   // 수행도 척도 (양식지 2)
   var performanceScale = {
     guide: '현재 수행 정도를 아래 기준에 따라 선택하세요. 수행 경험이 없으면 "미경험"을 선택합니다.',
@@ -396,6 +416,8 @@ window.SHData = (function () {
     personalAbility: personalAbility,
     environment: environment,
     spaces: spaces,
-    performanceScale: performanceScale
+    performanceScale: performanceScale,
+    controlInterfaces: controlInterfaces,
+    platformHint: platformHint
   };
 })();

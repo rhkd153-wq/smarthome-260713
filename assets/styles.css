@@ -305,6 +305,50 @@ textarea { resize: vertical; min-height: 70px; }
 
 .empty-state { text-align: center; color: var(--muted); padding: 30px 10px; }
 
+/* 권장 제어 인터페이스 */
+.rec-primary {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 8px 16px;
+  border-radius: 10px;
+}
+
+/* 대상자 정보 그리드 */
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.profile-cell {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fcfdfe;
+  font-size: 0.9rem;
+}
+.profile-cell .pf-label { color: var(--muted); }
+.profile-cell .pf-value { font-weight: 600; text-align: right; }
+
+/* 네트워크 적합성 */
+.tech-opt.tech-dim { opacity: 0.6; }
+.flag-warn {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #b26b00;
+  background: #fff4e0;
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-left: 2px;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
 /* 메타 정보 (의뢰기관) */
 .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 
@@ -315,7 +359,10 @@ textarea { resize: vertical; min-height: 70px; }
 @media print {
   .app-header, .stepbar, .actionbar, .no-print { display: none !important; }
   main { padding: 0; max-width: 100%; }
-  .card { box-shadow: none; border: none; padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ddd; padding: 14px; margin-bottom: 12px; page-break-inside: avoid; }
+  .sol-item, .solution-space { page-break-inside: avoid; }
+  .rec-primary { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  textarea { border: none; padding: 2px 0; min-height: 0; }
   body { background: #fff; }
 }
 
