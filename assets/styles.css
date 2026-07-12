@@ -44,8 +44,23 @@ html, body {
   padding: 14px 20px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
+.header-nav { display: flex; }
+.header-link {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.header-link:hover { border-color: var(--primary); }
+.header-link.active { background: var(--primary-soft); border-color: var(--primary); }
 .app-header .brand {
   font-weight: 700;
   font-size: 1.05rem;
@@ -223,6 +238,92 @@ textarea { resize: vertical; min-height: 70px; }
 .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
 .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- 스플래시 ---------- */
+body.splash-mode .app-header,
+body.splash-mode .app-footer,
+body.splash-mode .actionbar { display: none !important; }
+body.splash-mode main { padding: 0; max-width: 100%; }
+
+.splash {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  cursor: pointer;
+  background: linear-gradient(160deg, #dff1f3 0%, #eef6ee 55%, #e3f0ea 100%);
+  position: relative;
+}
+.splash-mid { display: flex; flex-direction: column; align-items: center; }
+.splash-icon {
+  width: 128px; height: 128px;
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(31,122,140,0.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px;
+}
+.splash-title { font-size: 2.4rem; font-weight: 800; color: var(--primary-dark); margin-top: 26px; }
+.splash-sub { font-size: 1rem; font-weight: 700; letter-spacing: 0.35em; color: var(--primary); margin-top: 6px; padding-left: 0.35em; }
+.splash-tagline { color: var(--muted); font-weight: 600; margin-top: 14px; }
+.splash-touch {
+  margin-top: 42px;
+  font-size: 1.15rem; font-weight: 700; color: var(--primary-dark);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+.splash-ver { position: absolute; bottom: 28px; color: var(--muted); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.05em; }
+
+/* ---------- 더보기 ---------- */
+.story-card { padding: 0; overflow: hidden; }
+.story-head {
+  width: 100%; text-align: left;
+  background: #fff; border: none;
+  padding: 18px 20px;
+  font-size: 1.05rem; font-weight: 700; color: var(--text);
+  cursor: pointer; font-family: inherit;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.story-card.open .story-head { border-bottom: 1px solid var(--line); color: var(--primary-dark); }
+.story-caret { color: var(--primary); font-weight: 700; }
+.story-body { padding: 16px 20px 20px; }
+.story-body p { margin: 0 0 12px; line-height: 1.7; color: var(--text); }
+.story-body p:first-child { color: var(--primary-dark); font-weight: 700; }
+.story-sign { text-align: right; font-weight: 700; color: var(--text); margin-top: 6px; }
+
+.stars { display: flex; gap: 4px; justify-content: center; margin: 6px 0 12px; }
+.star {
+  background: none; border: none; cursor: pointer;
+  font-size: 2rem; line-height: 1; color: #d9dee5; padding: 0 2px;
+  font-family: inherit; transition: color .12s, transform .12s;
+}
+.star:hover { transform: scale(1.1); }
+.star.on { color: var(--accent); }
+
+.more-link-card {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  cursor: pointer; font-family: inherit;
+}
+.more-link-card:hover { background: var(--primary-soft); }
+.more-link-icon {
+  flex: 0 0 auto;
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+}
+.more-link-title { font-weight: 700; }
+.more-link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+.more-link-arrow { margin-left: auto; color: var(--muted); font-size: 1.6rem; }
 
 /* ---------- 인트로 ---------- */
 .hero { text-align: center; padding: 20px 0 8px; }

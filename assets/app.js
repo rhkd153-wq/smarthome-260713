@@ -12,12 +12,20 @@
 
   var D = window.SHData;
 
+  /* ---------- 앱 메타 정보 ---------- */
+  var APP_VERSION = 'v1.0.0';
+  var CONTACT_EMAIL = 'kwangtae@bc.ac.kr';
+  var MAKER_CREDIT = '제작: 작치빌더(otbuilder) · ' + CONTACT_EMAIL;
+  // 자세한 사용 후기(사용성평가 설문) 링크 — 받는 대로 여기에 넣으면 연결됩니다.
+  var SURVEY_URL = '';
+
   // 앱 상태 (평가 결과 저장소)
   function blankState() {
     return {
-      screen: 'intro',
+      screen: 'splash',
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
-              goal: '', budget: '', scenario: '', kitOverride: '' },
+              goal: '', budget: '', scenario: '', kitOverride: '',
+              reviewRating: 0, reviewText: '' },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
@@ -138,10 +146,27 @@
   function renderStepbar() {
     stepbar.innerHTML = '';
     var currentIdx = STEPS.map(function (s) { return s.id; }).indexOf(state.screen);
+    if (currentIdx === -1) { stepbar.style.display = 'none'; return; } // splash/more
+    stepbar.style.display = '';
     STEPS.forEach(function (s, i) {
       var cls = 'step' + (i === currentIdx ? ' active' : '') + (i < currentIdx ? ' done' : '');
       stepbar.appendChild(el('div', { class: cls }, [(i + 1) + '. ' + s.label]));
     });
+  }
+
+  /* ---------- 헤더 '더보기' 링크 ---------- */
+  function updateHeaderNav() {
+    var nav = document.getElementById('header-nav');
+    if (!nav) return;
+    nav.innerHTML = '';
+    if (state.screen === 'splash') { nav.style.display = 'none'; return; }
+    nav.style.display = '';
+    var isMore = state.screen === 'more';
+    nav.appendChild(el('button', {
+      class: 'header-link' + (isMore ? ' active' : ''),
+      type: 'button',
+      onclick: function () { go(isMore ? 'intro' : 'more'); }
+    }, [isMore ? '← 돌아가기' : '⋯ 더보기']));
   }
 
   /* ---------- 하단 액션바 ---------- */
@@ -167,6 +192,31 @@
     state.screen = screen;
     window.scrollTo(0, 0);
     render();
+  }
+
+  /* =========================================================
+   * 화면 : 스플래시 (시작)
+   * =======================================================*/
+  function renderSplash() {
+    actionbar.innerHTML = '';
+    app.innerHTML = '';
+    var splash = el('div', {
+      class: 'splash', role: 'button', tabindex: '0',
+      onclick: function () { go('intro'); }
+    }, [
+      el('div', { class: 'splash-mid' }, [
+        el('div', { class: 'splash-icon' }, ['🏠']),
+        el('div', { class: 'splash-title' }, ['스마트 홈 솔루션']),
+        el('div', { class: 'splash-sub' }, ['SMART HOME SOLUTION']),
+        el('div', { class: 'splash-tagline' }, ['자립을 여는 스마트 홈 가정 환경 수정']),
+        el('div', { class: 'splash-touch' }, ['화면을 터치해 주세요'])
+      ]),
+      el('div', { class: 'splash-ver' }, [APP_VERSION])
+    ]);
+    splash.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') go('intro');
+    });
+    app.appendChild(splash);
   }
 
   /* =========================================================
@@ -277,6 +327,111 @@
       wrap.appendChild(chip);
     });
     return wrap;
+  }
+
+  /* =========================================================
+   * 화면 : 더보기 (만든 이야기 · 사용후기 · 자세한 후기)
+   * =======================================================*/
+  var storyOpen = false;
+  function renderMore() {
+    var container = el('div', {}, [
+      el('h1', { class: 'page-title' }, ['더보기']),
+      el('p', { class: 'page-sub' }, ['만든 사람의 이야기, 사용 후기, 자세한 후기 남기기입니다.'])
+    ]);
+
+    /* 만든 사람의 이야기 (접기/펼치기) */
+    var storyCard = el('div', { class: 'card story-card' + (storyOpen ? ' open' : '') }, []);
+    storyCard.appendChild(el('button', {
+      class: 'story-head', type: 'button',
+      onclick: function () { storyOpen = !storyOpen; render(); }
+    }, [
+      el('span', {}, ['🌳  만든 사람의 이야기']),
+      el('span', { class: 'story-caret' }, [storyOpen ? '⌃' : '⌄'])
+    ]));
+    if (storyOpen) {
+      var body = el('div', { class: 'story-body' }, []);
+      [
+        '“우리는 기기를 설치하는 사람이 아니라, 환경을 바꿔 ‘가능성’을 만드는 사람입니다.”',
+        '스마트 홈은 하루아침에 완성되지 않습니다. 대상자의 하루를 관찰하고, 무엇이 어려운지 함께 확인하고, 작은 기기 하나로 ‘할 수 있음’을 되찾는 과정이 쌓여 자립이 됩니다.',
+        '이 도구는 기초 스크리닝부터 주요구 확인, 공간별 수행도, 적정 스마트 홈 기술 도출까지 — 평가자가 누구나 같은 흐름으로 대상자 맞춤 솔루션을 낼 수 있도록 만들었습니다.',
+        '다만 기기 도입만으로 기능이 완성되지는 않습니다. 임상가의 중재·일상 과제와 함께 활용해 주시길 권합니다.',
+        '근거: 스마트 홈 가정 환경 수정 프로그램 매뉴얼(문광태 외, 보건복지부 2023) · 부천대학교 작업치료학과.'
+      ].forEach(function (p) { body.appendChild(el('p', {}, [p])); });
+      body.appendChild(el('div', { class: 'story-sign' }, ['— 작치빌더(otbuilder) 드림']));
+      storyCard.appendChild(body);
+    }
+    container.appendChild(storyCard);
+
+    /* 간단한 사용후기 (별점 + 메모 → 이메일 전송) */
+    container.appendChild(renderQuickReview());
+
+    /* 자세한 사용 후기 남기기 (설문 링크) */
+    container.appendChild(el('button', {
+      class: 'more-link-card', type: 'button',
+      onclick: openSurvey
+    }, [
+      el('div', { class: 'more-link-icon' }, ['💬']),
+      el('div', {}, [
+        el('div', { class: 'more-link-title' }, ['자세한 사용 후기 남기기']),
+        el('div', { class: 'more-link-desc' }, ['앱 사용성평가 설문으로 연결됩니다.'])
+      ]),
+      el('div', { class: 'more-link-arrow' }, ['›'])
+    ]));
+
+    app.innerHTML = '';
+    app.appendChild(container);
+    actionbar.innerHTML = ''; // 상단 헤더의 '돌아가기'를 사용
+  }
+
+  function renderQuickReview() {
+    var m = state.meta;
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['📝 간단한 사용후기 남기기']),
+      el('p', { class: 'section-guide' }, ['사용해 보신 느낌을 간단히 남겨주세요.'])
+    ]);
+    // 별점
+    var stars = el('div', { class: 'stars' }, []);
+    for (var i = 1; i <= 5; i++) {
+      (function (n) {
+        stars.appendChild(el('button', {
+          class: 'star' + (m.reviewRating >= n ? ' on' : ''),
+          type: 'button', 'aria-label': n + '점',
+          onclick: function () { m.reviewRating = (m.reviewRating === n) ? 0 : n; render(); }
+        }, [m.reviewRating >= n ? '★' : '☆']));
+      })(i);
+    }
+    card.appendChild(stars);
+    card.appendChild(el('textarea', {
+      placeholder: '예: 주요구 확인 단계가 편했어요, 화장실 기기도 더 추가해주세요 등',
+      oninput: function (e) { m.reviewText = e.target.value; saveState(); }
+    }, [m.reviewText || '']));
+    card.appendChild(el('button', {
+      class: 'btn btn-primary', type: 'button', style: 'width:100%;margin-top:10px',
+      onclick: sendQuickReview
+    }, ['후기 보내기']));
+    return card;
+  }
+
+  function sendQuickReview() {
+    var m = state.meta;
+    var subj = '[스마트 홈 솔루션] 사용후기 ' + (m.reviewRating ? ('★' + m.reviewRating) : '');
+    var lines = [
+      '별점: ' + (m.reviewRating ? (m.reviewRating + ' / 5') : '(미선택)'),
+      '내용: ' + (m.reviewText || '(없음)'),
+      '버전: ' + APP_VERSION
+    ];
+    var href = 'mailto:' + CONTACT_EMAIL +
+      '?subject=' + encodeURIComponent(subj) +
+      '&body=' + encodeURIComponent(lines.join('\n'));
+    window.location.href = href;
+  }
+
+  function openSurvey() {
+    if (SURVEY_URL) {
+      window.open(SURVEY_URL, '_blank', 'noopener');
+    } else {
+      window.alert('자세한 사용 후기(설문) 링크가 아직 등록되지 않았습니다.\n담당자에게 문의해 주세요: ' + CONTACT_EMAIL);
+    }
   }
 
   /* =========================================================
@@ -653,10 +808,8 @@
     /* --- 중재 계획 및 유의사항 (처리 과정 반영) --- */
     container.appendChild(renderInterventionCard());
 
-    /* --- 근거 출처 (인쇄 시에도 표기) --- */
-    container.appendChild(el('div', { class: 'report-source' }, [
-      '근거: 스마트 홈 가정 환경 수정 프로그램 매뉴얼 (문광태 외, 보건복지부 2023) · 부천대학교 작업치료학과'
-    ]));
+    /* --- 제작 크레딧 (인쇄 시에도 표기) --- */
+    container.appendChild(el('div', { class: 'report-source' }, [MAKER_CREDIT]));
 
     app.innerHTML = '';
     app.appendChild(container);
@@ -967,20 +1120,19 @@
   function render() {
     saveState();
     renderStepbar();
-    if (state.screen === 'intro') renderIntro();
+    document.body.classList.toggle('splash-mode', state.screen === 'splash');
+    if (state.screen === 'splash') renderSplash();
+    else if (state.screen === 'intro') renderIntro();
     else if (state.screen === 'screening') renderScreening();
     else if (state.screen === 'needs') renderNeeds();
     else if (state.screen === 'performance') renderPerformance();
     else if (state.screen === 'result') renderResult();
+    else if (state.screen === 'more') renderMore();
+    updateHeaderNav();
   }
 
-  // 시작 시 저장된 평가 복원 (있으면 이어서 진행)
-  var restored = loadSavedState();
-  if (restored) {
-    // 저장된 화면이 유효하지 않으면 인트로로
-    if (STEPS.map(function (s) { return s.id; }).indexOf(state.screen) === -1) {
-      state.screen = 'intro';
-    }
-  }
+  // 시작 시 저장된 평가 복원 (있으면 데이터 유지, 화면은 항상 스플래시부터)
+  loadSavedState();
+  state.screen = 'splash';
   render();
 })();
