@@ -373,7 +373,9 @@
       el('div', { class: 'more-link-icon' }, ['💬']),
       el('div', {}, [
         el('div', { class: 'more-link-title' }, ['자세한 사용 후기 남기기']),
-        el('div', { class: 'more-link-desc' }, ['앱 사용성평가 설문으로 연결됩니다.'])
+        el('div', { class: 'more-link-desc' }, [
+          SURVEY_URL ? '앱 사용성평가 설문으로 연결됩니다.' : '준비 중입니다. 곧 제공될 예정입니다.'
+        ])
       ]),
       el('div', { class: 'more-link-arrow' }, ['›'])
     ]));
@@ -430,7 +432,7 @@
     if (SURVEY_URL) {
       window.open(SURVEY_URL, '_blank', 'noopener');
     } else {
-      window.alert('자세한 사용 후기(설문) 링크가 아직 등록되지 않았습니다.\n담당자에게 문의해 주세요: ' + CONTACT_EMAIL);
+      window.alert('자세한 사용 후기는 준비 중입니다. 곧 제공될 예정입니다.\n지금은 위의 "간단한 사용후기"로 의견을 보내주세요.');
     }
   }
 
