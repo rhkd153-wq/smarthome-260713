@@ -158,6 +158,21 @@ window.SHData = (function () {
           { value: 'tried', label: '경험만 있음' },
           { value: 'none', label: '없음' }
         ]
+      },
+      {
+        id: 'ecosystem', label: '보유 브랜드 · 생태계 (해당 시)', type: 'multi',
+        options: [
+          { value: 'samsung', label: '삼성 가전' },
+          { value: 'lg', label: 'LG 가전' },
+          { value: 'apple', label: '애플 기기' },
+          { value: 'kt', label: 'KT (인터넷·기가지니)' },
+          { value: 'google', label: '구글' },
+          { value: 'etc', label: '기타' }
+        ]
+      },
+      {
+        id: 'appliancesText', label: '현재 사용 중인 가전·스마트 기기 (기입)', type: 'text',
+        placeholder: '예) 스마트 TV, 에어컨, 로봇청소기, AI 스피커 등'
       }
     ]
   };
@@ -423,6 +438,19 @@ window.SHData = (function () {
   };
 
   /* =========================================================
+   * 권장 플랫폼 (강의록: SmartThings·LG ThinQ·Hejhome·GigaGenie 등)
+   *  - 개인/환경(OS·보유 브랜드)에 따라 추천 우선순위를 정함
+   * =======================================================*/
+  var platforms = {
+    smartthings: { name: 'SmartThings', desc: '삼성 가전·안드로이드와 잘 맞고 Matter 지원 폭이 넓어 확장에 유리' },
+    thinq:       { name: 'LG ThinQ', desc: 'LG 가전을 보유·활용할 때' },
+    apple:       { name: 'Apple 홈 (HomeKit)', desc: '아이폰·아이패드 등 애플 기기 사용 시' },
+    google:      { name: 'Google Home', desc: '안드로이드·구글 어시스턴트 기반' },
+    hejhome:     { name: 'Hej Home (헤이홈)', desc: '국내 보급형, 다양한 저가 기기로 초기 구성에 부담이 적음' },
+    gigagenie:   { name: 'KT GiGA Genie (기가지니)', desc: 'KT 인터넷·음성 스피커를 쓰는 경우' }
+  };
+
+  /* =========================================================
    * 키트 구성 (강의록 34p: 초보자 키트 / 숙련자 키트)
    *  - 기기를 설치 난이도에 따라 두 등급으로 분류
    *    · beginner: 플러그앤플레이 (설정 간단, 별도 배선/설치 최소)
@@ -511,6 +539,7 @@ window.SHData = (function () {
     performanceScale: performanceScale,
     controlInterfaces: controlInterfaces,
     platformHint: platformHint,
+    platforms: platforms,
     deviceTier: deviceTier,
     kitLevels: kitLevels,
     activityCategoryById: activityCategoryById,

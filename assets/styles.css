@@ -432,6 +432,18 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   border-radius: 10px;
 }
 
+/* 권장 플랫폼 */
+.platform-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.platform-item {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fcfdfe;
+}
+.platform-name { font-weight: 700; color: var(--primary-dark); }
+.platform-desc { font-size: 0.86rem; color: var(--muted); margin-top: 2px; }
+
 /* 대상자 정보 그리드 */
 .profile-grid {
   display: grid;

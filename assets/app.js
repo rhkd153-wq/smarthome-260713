@@ -761,6 +761,70 @@
   }
 
   /* =========================================================
+   * 권장 플랫폼 산출 (OS·보유 브랜드 기반)
+   * =======================================================*/
+  function computePlatforms() {
+    var env = state.environment;
+    var eco = env.ecosystem || [];
+    var scored = {};
+    function add(id, score, reason) {
+      if (!scored[id]) scored[id] = { score: 0, reasons: [] };
+      scored[id].score += score;
+      if (reason && scored[id].reasons.indexOf(reason) < 0) scored[id].reasons.push(reason);
+    }
+    if (eco.indexOf('samsung') > -1) add('smartthings', 3, '삼성 가전 보유');
+    if (eco.indexOf('lg') > -1) add('thinq', 3, 'LG 가전 보유');
+    if (eco.indexOf('apple') > -1) add('apple', 3, '애플 기기 보유');
+    if (eco.indexOf('kt') > -1) add('gigagenie', 3, 'KT 인터넷·기가지니');
+    if (eco.indexOf('google') > -1) add('google', 2, '구글 사용');
+    if (env.os === 'ios') add('apple', 2, '아이폰(iOS) 사용');
+    if (env.os === 'android') { add('smartthings', 2, '안드로이드 사용'); add('google', 1, '안드로이드 사용'); }
+    if (env.iotExperience === 'none' || env.iotExperience === 'tried') add('hejhome', 1, 'IoT 경험이 적어 보급형으로 시작하기 좋음');
+
+    var ids = Object.keys(scored);
+    if (ids.length === 0) {
+      return [
+        { name: D.platforms.smartthings.name, desc: D.platforms.smartthings.desc, reason: '국내 호환성·확장성이 넓은 기본 추천' },
+        { name: D.platforms.hejhome.name, desc: D.platforms.hejhome.desc, reason: '보급형으로 부담 없이 시작' }
+      ];
+    }
+    ids.sort(function (a, b) { return scored[b].score - scored[a].score; });
+    return ids.slice(0, 3).map(function (id) {
+      return { name: D.platforms[id].name, desc: D.platforms[id].desc, reason: scored[id].reasons.join(' · ') };
+    });
+  }
+
+  function renderPlatformCard() {
+    var env = state.environment;
+    var plats = computePlatforms();
+    var card = el('div', { class: 'card' }, [el('h3', {}, ['권장 플랫폼 및 기존 가전 활용'])]);
+
+    card.appendChild(el('p', { class: 'section-guide' }, ['기기들을 하나로 묶어 제어할 플랫폼(허브 앱)입니다. 개인 기기·보유 브랜드에 맞춰 아래 순서로 검토하세요.']));
+    var list = el('div', { class: 'platform-list' }, plats.map(function (p) {
+      return el('div', { class: 'platform-item' }, [
+        el('div', { class: 'platform-name' }, [p.name]),
+        el('div', { class: 'platform-desc' }, [p.desc + (p.reason ? (' — ' + p.reason) : '')])
+      ]);
+    }));
+    card.appendChild(list);
+
+    // 기존 가전 활용
+    var appl = (env.appliancesText || '').trim();
+    var applBox = el('div', { class: 'note', style: 'margin-top:14px' }, [
+      el('strong', {}, ['기존 가전 활용: '])
+    ]);
+    if (appl) {
+      applBox.appendChild(document.createTextNode('현재 보유: ' + appl + '. '));
+    }
+    applBox.appendChild(document.createTextNode(
+      '이미 있는 기기(스마트 TV·에어컨 등)는 새로 사지 말고 위 플랫폼에 연동해 먼저 활용하세요. ' +
+      '새 기기를 고를 때는 보유 플랫폼·Matter 지원 여부를 확인해 호환성을 맞추면 중복 구매를 줄일 수 있습니다.'
+    ));
+    card.appendChild(applBox);
+    return card;
+  }
+
+  /* =========================================================
    * 화면 3 : 솔루션 제안서 (양식지 3)
    * =======================================================*/
   function renderResult() {
@@ -809,9 +873,6 @@
       recCard.appendChild(el('div', { class: 'rec-primary' }, [rec.primary]));
     }
     recCard.appendChild(el('p', { class: 'section-guide', style: 'margin-top:6px' }, [rec.reason]));
-    if (rec.platform) {
-      recCard.appendChild(el('div', { class: 'report-meta' }, ['권장 플랫폼: ', el('b', {}, [rec.platform])]));
-    }
     if (rec.speakerBlocked) {
       recCard.appendChild(el('div', { class: 'note note-danger', style: 'margin-top:10px' }, [
         el('strong', {}, ['Wi-Fi 필요: ']),
@@ -826,6 +887,9 @@
       ]));
     }
     container.appendChild(recCard);
+
+    /* --- 권장 플랫폼 및 기존 가전 활용 --- */
+    container.appendChild(renderPlatformCard());
 
     /* --- 요약 통계 --- */
     var wifiCount = 0, bleCount = 0;
@@ -930,6 +994,10 @@
     if (env.household) add('가구 형태', labelOf(ef, 'household', env.household));
     if (env.housing) add('주거 형태', labelOf(ef, 'housing', env.housing));
     if (env.iotExperience) add('IoT 사용 경험', labelOf(ef, 'iotExperience', env.iotExperience));
+    if (env.ecosystem && env.ecosystem.length) {
+      add('보유 브랜드', env.ecosystem.map(function (v) { return labelOf(ef, 'ecosystem', v); }).join(', '));
+    }
+    if (env.appliancesText) add('현재 가전·기기', env.appliancesText);
 
     var card = el('div', { class: 'card' }, [el('h3', {}, ['대상자 정보'])]);
     if (rows.length === 0) {
