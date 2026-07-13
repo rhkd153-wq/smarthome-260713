@@ -1,19 +1,20 @@
 /* 스마트 홈 솔루션 앱 - 스타일 */
 
 :root {
-  --bg: #f4f6f9;
+  /* 부천대학교 브랜드 컬러 — 주황 테마 */
+  --bg: #f8f4ef;
   --surface: #ffffff;
-  --line: #e3e8ef;
-  --text: #1f2933;
-  --muted: #6b7280;
-  --primary: #1f7a8c;
-  --primary-dark: #17606e;
-  --primary-soft: #e5f2f4;
+  --line: #ece3da;
+  --text: #241a12;
+  --muted: #7a6a5c;
+  --primary: #cb5a0f;        /* 주황 (버튼·강조) */
+  --primary-dark: #a6470b;   /* 진한 주황 (hover·제목) */
+  --primary-soft: #fceadd;   /* 연한 주황 (배경·칩) */
   --accent: #f0a202;
   --danger: #d64545;
   --ok: #2f9e44;
   --radius: 12px;
-  --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow: 0 1px 3px rgba(64, 32, 8, 0.08), 0 1px 2px rgba(64, 32, 8, 0.04);
   --maxw: 880px;
 }
 
@@ -266,7 +267,7 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   text-align: center;
   padding: 40px 20px;
   cursor: pointer;
-  background: linear-gradient(160deg, #dff1f3 0%, #eef6ee 55%, #e3f0ea 100%);
+  background: linear-gradient(160deg, #ffe6cf 0%, #fdd9b8 45%, #fbcfa4 100%);
   position: relative;
 }
 .splash-mid { display: flex; flex-direction: column; align-items: center; }
@@ -274,7 +275,7 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   width: 128px; height: 128px;
   border-radius: 30px;
   background: #fff;
-  box-shadow: 0 12px 30px rgba(31,122,140,0.18);
+  box-shadow: 0 12px 30px rgba(203,90,15,0.22);
   display: flex; align-items: center; justify-content: center;
   font-size: 64px;
 }
@@ -402,7 +403,7 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   border-radius: 6px;
   margin-top: 2px;
 }
-.net-wifi { background: #e5f2f4; color: var(--primary-dark); }
+.net-wifi { background: var(--primary-soft); color: var(--primary-dark); }
 .net-ble { background: #ede7f6; color: #5e35b1; }
 .devices { color: var(--text); }
 
