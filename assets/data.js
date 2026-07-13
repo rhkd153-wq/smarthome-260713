@@ -467,6 +467,29 @@ window.SHData = (function () {
     }
   };
 
+  /* =========================================================
+   * 주요구 ↔ 공간별 활동 연결 (옵션 B: 주요구 중심 필터링)
+   *  - 활동 id는 의미별로 일관되므로 id → 카테고리 매핑으로 처리
+   *  - 현재 활동 수준(주요구) 항목 → 관련 카테고리
+   * =======================================================*/
+  var activityCategoryById = {
+    unlock: 'lock', door: 'door', security: 'security', bell: 'bell',
+    moodlight: 'light', lightswitch: 'light', curtain: 'curtain', poweroff: 'appliance',
+    humidity: 'humidity', fanheater: 'climate', heating: 'climate', bed: 'posture',
+    airquality: 'airquality', alert: 'security',
+    tvac: 'appliance', tempHumidity: 'climate', weight: 'health', exercise: 'light',
+    heartrate: 'health', petmonitor: 'pet', petfeed: 'pet', fan: 'climate'
+  };
+  // 주요구(현재 활동 수준 항목) → 필터에 포함할 카테고리
+  var needCategoryMap = {
+    door: ['door'],
+    lock: ['lock'],
+    bell: ['bell', 'security'],
+    light: ['light'],
+    curtain: ['curtain'],
+    appliance: ['appliance', 'climate']
+  };
+
   // 수행도 척도 (양식지 2)
   var performanceScale = {
     guide: '현재 수행 정도를 아래 기준에 따라 선택하세요. 수행 경험이 없으면 "미경험"을 선택합니다.',
@@ -487,6 +510,8 @@ window.SHData = (function () {
     controlInterfaces: controlInterfaces,
     platformHint: platformHint,
     deviceTier: deviceTier,
-    kitLevels: kitLevels
+    kitLevels: kitLevels,
+    activityCategoryById: activityCategoryById,
+    needCategoryMap: needCategoryMap
   };
 })();

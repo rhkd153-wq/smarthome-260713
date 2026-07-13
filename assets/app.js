@@ -25,7 +25,7 @@
       screen: 'splash',
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '',
-              reviewRating: 0, reviewText: '' },
+              reviewRating: 0, reviewText: '', perfShowAll: false },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
@@ -166,7 +166,7 @@
       class: 'header-link' + (isMore ? ' active' : ''),
       type: 'button',
       onclick: function () { go(isMore ? 'intro' : 'more'); }
-    }, [isMore ? '← 돌아가기' : '⋯ 더보기']));
+    }, [isMore ? '← 돌아가기' : '더보기']));
   }
 
   /* ---------- 하단 액션바 ---------- */
@@ -612,13 +612,56 @@
    * 화면 2 : 공간별 작업수행도 (양식지 2)
    * =======================================================*/
   var openSpaces = {}; // 아코디언 열림 상태
+
+  /* 주요구 기반 필터 --------------------------------------- */
+  // '예'로 확인된 주요구 → 포함 카테고리 집합
+  function confirmedCategories() {
+    var set = {};
+    D.currentActivityLevel.groups.forEach(function (grp) {
+      grp.items.forEach(function (item) {
+        if (state.needs[item.id] === true) {
+          (D.needCategoryMap[item.id] || []).forEach(function (c) { set[c] = true; });
+        }
+      });
+    });
+    return Object.keys(set);
+  }
+  function filterActive() {
+    return !state.meta.perfShowAll && confirmedCategories().length > 0;
+  }
+  function activityVisible(act) {
+    if (!filterActive()) return true;
+    var cat = D.activityCategoryById[act.id] || 'other';
+    return confirmedCategories().indexOf(cat) > -1;
+  }
+
   function renderPerformance() {
+    var filtered = filterActive();
     var container = el('div', {}, [
       el('h1', { class: 'page-title' }, ['2. 공간별 작업수행도']),
       el('p', { class: 'page-sub' }, [D.performanceScale.guide])
     ]);
 
+    // 필터 토글 (주요구 확인 결과가 있을 때만)
+    if (confirmedCategories().length > 0) {
+      container.appendChild(el('div', { class: 'filter-bar' }, [
+        el('span', { class: 'filter-label' }, [
+          filtered ? '주요구와 관련된 활동만 표시 중입니다.' : '전체 활동을 표시 중입니다.'
+        ]),
+        el('button', {
+          class: 'btn', type: 'button', style: 'padding:7px 14px',
+          onclick: function () { state.meta.perfShowAll = !state.meta.perfShowAll; render(); }
+        }, [filtered ? '전체 활동 보기' : '주요구 항목만 보기'])
+      ]));
+    }
+
     D.spaces.forEach(function (space, si) {
+      // 이 공간에 표시할 활동이 있는지 확인
+      var visibleTasks = space.tasks.map(function (task) {
+        return { task: task, acts: task.activities.filter(activityVisible) };
+      }).filter(function (t) { return t.acts.length > 0; });
+      if (visibleTasks.length === 0) return; // 관련 활동 없으면 공간 숨김
+
       if (openSpaces[space.id] === undefined) openSpaces[space.id] = (si === 0);
       var ratedCount = countRatedInSpace(space);
       var block = el('div', { class: 'space-block' }, []);
@@ -627,17 +670,17 @@
         onclick: function () { openSpaces[space.id] = !openSpaces[space.id]; render(); }
       }, [
         el('span', {}, [(openSpaces[space.id] ? '▾ ' : '▸ ') + space.label]),
-        el('span', { class: 'count' }, [ratedCount > 0 ? ('제한 활동 ' + ratedCount + '개' ) : '미평가'])
+        el('span', { class: 'count' }, [ratedCount > 0 ? ('제한 활동 ' + ratedCount + '개') : '미평가'])
       ]);
       block.appendChild(head);
 
       var body = el('div', { class: 'space-body' + (openSpaces[space.id] ? ' open' : '') }, []);
-      space.tasks.forEach(function (task) {
-        body.appendChild(el('div', { class: 'task-label' }, ['· ' + task.label]));
+      visibleTasks.forEach(function (vt) {
+        body.appendChild(el('div', { class: 'task-label' }, ['· ' + vt.task.label]));
         var matrix = el('div', { class: 'matrix' }, []);
-        task.activities.forEach(function (act) {
-          var key = perfKey(space.id, task.id, act.id);
-          var row = el('div', { class: 'matrix-row' }, [
+        vt.acts.forEach(function (act) {
+          var key = perfKey(space.id, vt.task.id, act.id);
+          matrix.appendChild(el('div', { class: 'matrix-row' }, [
             el('div', { class: 'row-label' }, [act.label]),
             choiceGroup(
               D.performanceScale.options.map(function (o) { return { value: o.value, label: o.short }; }),
@@ -647,8 +690,7 @@
                 render();
               }
             )
-          ]);
-          matrix.appendChild(row);
+          ]));
         });
         body.appendChild(matrix);
       });
@@ -683,6 +725,7 @@
     var n = 0;
     space.tasks.forEach(function (task) {
       task.activities.forEach(function (act) {
+        if (!activityVisible(act)) return;
         var v = state.performance[perfKey(space.id, task.id, act.id)];
         if (v === 1 || v === 2) n++;
       });
@@ -690,12 +733,13 @@
     return n;
   }
 
-  /* 제한되는 활동(수행도 1 또는 2) 수집 */
+  /* 제한되는 활동(수행도 1 또는 2) 수집 — 현재 필터에 보이는 활동만 */
   function collectLimitedActivities() {
     var out = [];
     D.spaces.forEach(function (space) {
       space.tasks.forEach(function (task) {
         task.activities.forEach(function (act) {
+          if (!activityVisible(act)) return;
           var v = state.performance[perfKey(space.id, task.id, act.id)];
           if (v === 1 || v === 2) {
             out.push({ space: space, task: task, activity: act, level: v });
