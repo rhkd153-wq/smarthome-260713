@@ -643,6 +643,14 @@
       el('p', { class: 'page-sub' }, [D.performanceScale.guide])
     ]);
 
+    // 수행 정도 기준 안내 (상단)
+    container.appendChild(el('div', { class: 'note' }, [
+      el('strong', {}, ['수행 정도 기준']), ' — ',
+      '미경험(경험 없음, 체크 안 함) · 1(못함/안함) · 2(도움받아 함) · 3(독립적으로 수행함). ',
+      el('br', {}, []),
+      '1 또는 2 로 평가된 활동이 스마트 홈 솔루션 추천 대상이 됩니다.'
+    ]));
+
     // 필터 토글 (주요구 확인 결과가 있을 때만)
     if (confirmedCategories().length > 0) {
       container.appendChild(el('div', { class: 'filter-bar' }, [
@@ -701,14 +709,6 @@
       block.appendChild(body);
       container.appendChild(block);
     });
-
-    // 척도 안내
-    container.appendChild(el('div', { class: 'note' }, [
-      el('strong', {}, ['수행 정도 기준']), ' — ',
-      '미경험(경험 없음, 체크 안 함) · 1(못함/안함) · 2(도움받아 함) · 3(독립적으로 수행함). ',
-      el('br', {}, []),
-      '1 또는 2 로 평가된 활동이 스마트 홈 솔루션 추천 대상이 됩니다.'
-    ]));
 
     app.innerHTML = '';
     app.appendChild(container);
