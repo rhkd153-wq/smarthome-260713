@@ -638,17 +638,23 @@
 
   function renderPerformance() {
     var filtered = filterActive();
+    var hasNeeds = confirmedCategories().length > 0;
+    var subText = hasNeeds
+      ? '앞서 확인한 주요구를 바탕으로, 각 공간에서 실제로 어떻게 수행하고 있는지 조금 더 자세히 확인합니다. 이 수행 정도에 따라 공간별로 맞춤 스마트 홈 기술을 추천합니다.'
+      : '각 공간에서 현재 수행 정도를 확인합니다. 이 결과에 따라 공간별로 맞춤 스마트 홈 기술을 추천합니다.';
     var container = el('div', {}, [
       el('h1', { class: 'page-title' }, ['2. 공간별 작업수행도']),
-      el('p', { class: 'page-sub' }, [D.performanceScale.guide])
+      el('p', { class: 'page-sub' }, [subText])
     ]);
 
     // 수행 정도 기준 안내 (상단)
     container.appendChild(el('div', { class: 'note' }, [
-      el('strong', {}, ['수행 정도 기준']), ' — ',
-      '미경험(경험 없음, 체크 안 함) · 1(못함/안함) · 2(도움받아 함) · 3(독립적으로 수행함). ',
+      D.performanceScale.guide,
       el('br', {}, []),
-      '1 또는 2 로 평가된 활동이 스마트 홈 솔루션 추천 대상이 됩니다.'
+      el('strong', {}, ['수행 정도 기준']), ' — ',
+      '미경험(경험 없음) · 못함·안함 · 도움받아 함 · 독립적으로 함. ',
+      el('br', {}, []),
+      '‘못함·안함’ 또는 ‘도움받아 함’으로 표시된 활동이 스마트 홈 솔루션 추천 대상이 됩니다.'
     ]));
 
     // 필터 토글 (주요구 확인 결과가 있을 때만)
@@ -695,7 +701,7 @@
           matrix.appendChild(el('div', { class: 'matrix-row' }, [
             el('div', { class: 'row-label' }, [act.label]),
             choiceGroup(
-              D.performanceScale.options.map(function (o) { return { value: o.value, label: o.short }; }),
+              D.performanceScale.options.map(function (o) { return { value: o.value, label: o.word }; }),
               state.performance[key],
               function (v) {
                 state.performance[key] = (state.performance[key] === v) ? undefined : v;

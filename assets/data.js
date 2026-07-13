@@ -496,10 +496,10 @@ window.SHData = (function () {
   var performanceScale = {
     guide: '현재 수행 정도를 아래 기준에 따라 선택하세요. 수행 경험이 없으면 "미경험"을 선택합니다.',
     options: [
-      { value: 0, short: '미경험', label: '미경험 (수행 경험 없음)', limited: false },
-      { value: 1, short: '1', label: '1 · 못함 / 안함', limited: true },
-      { value: 2, short: '2', label: '2 · 도움받아 함 (보조기기 사용 포함)', limited: true },
-      { value: 3, short: '3', label: '3 · 독립적으로 수행함', limited: false }
+      { value: 0, word: '미경험', short: '미경험', label: '미경험 (수행 경험 없음)', limited: false },
+      { value: 1, word: '못함·안함', short: '1', label: '못함 / 안함', limited: true },
+      { value: 2, word: '도움받아 함', short: '2', label: '도움받아 함 (보조기기 사용 포함)', limited: true },
+      { value: 3, word: '독립적으로 함', short: '3', label: '독립적으로 수행함', limited: false }
     ]
   };
 
