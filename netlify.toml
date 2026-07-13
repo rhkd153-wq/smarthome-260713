@@ -2,8 +2,14 @@
 [build]
   publish = "."
 
-# 정적 자원 캐싱 (선택)
+# 자원은 매번 재검증 — 업데이트가 즉시 반영되도록 (파일명 고정 방식이므로)
 [[headers]]
   for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# HTML도 항상 재검증
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
