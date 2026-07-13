@@ -657,14 +657,17 @@
       ]));
     }
 
-    D.spaces.forEach(function (space, si) {
+    var firstVisibleOpened = false;
+    D.spaces.forEach(function (space) {
       // 이 공간에 표시할 활동이 있는지 확인
       var visibleTasks = space.tasks.map(function (task) {
         return { task: task, acts: task.activities.filter(activityVisible) };
       }).filter(function (t) { return t.acts.length > 0; });
       if (visibleTasks.length === 0) return; // 관련 활동 없으면 공간 숨김
 
-      if (openSpaces[space.id] === undefined) openSpaces[space.id] = (si === 0);
+      // 처음 보이는 공간을 기본으로 펼침
+      if (openSpaces[space.id] === undefined) openSpaces[space.id] = !firstVisibleOpened;
+      firstVisibleOpened = true;
       var ratedCount = countRatedInSpace(space);
       var block = el('div', { class: 'space-block' }, []);
       var head = el('button', {
@@ -804,7 +807,13 @@
     if (rec.platform) {
       recCard.appendChild(el('div', { class: 'report-meta' }, ['권장 플랫폼: ', el('b', {}, [rec.platform])]));
     }
-    if (rec.wifiWarning) {
+    if (rec.speakerBlocked) {
+      recCard.appendChild(el('div', { class: 'note note-danger', style: 'margin-top:10px' }, [
+        el('strong', {}, ['Wi-Fi 필요: ']),
+        '권장 제어 방식인 스마트 스피커(음성)는 Wi-Fi 연결이 필수입니다. 현재 Wi-Fi가 "없음"으로 평가되어 그대로는 사용할 수 없으므로, ' +
+        'Wi-Fi 구축이 선행되어야 합니다. 구축 전에는 BLE(스위치 로봇) 등 물리 기반 대안을 검토하세요.'
+      ]));
+    } else if (rec.wifiWarning) {
       recCard.appendChild(el('div', { class: 'note', style: 'margin-top:10px' }, [
         el('strong', {}, ['Wi-Fi 미보유: ']),
         'Wi-Fi 기반 기기는 네트워크 구축이 선행되어야 합니다. 그 전까지는 BLE(스위치 로봇 등) 대안을 우선 적용하세요. ' +
@@ -1060,6 +1069,26 @@
     ]));
     card.appendChild(el('p', { class: 'section-guide' }, [kit.desc]));
 
+    // IoT 사용 경험 기반 권장 근거
+    var iot = state.environment.iotExperience;
+    if (iot === 'none') {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, ['권장: ']),
+        'IoT 사용 경험이 "없음"으로 평가되어, 설정이 간단한 초보자 키트부터 시작하는 것을 권장합니다. ' +
+        '사용에 익숙해지면 숙련자 키트(확장 구성)로 넓혀 가세요.'
+      ]));
+    } else if (iot === 'tried') {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, ['권장: ']),
+        'IoT 사용 경험이 제한적이어서 초보자 키트를 우선 권장합니다.'
+      ]));
+    } else if (iot === 'using') {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, ['참고: ']),
+        'IoT 사용 경험이 있어 숙련자 키트(허브·자동화 확장)까지 활용할 수 있습니다.'
+      ]));
+    }
+
     if (rec && rec.wifiWarning) {
       card.appendChild(el('div', { class: 'note' }, [
         el('strong', {}, ['경로 안내: ']),
@@ -1130,26 +1159,28 @@
     var p = state.personal, env = state.environment;
     var CI = D.controlInterfaces;
     var primary, reason;
+    var needsWifi = false; // 이 권장안이 Wi-Fi 연결을 필요로 하는가 (스피커 등)
 
     if (p.handUse === 'operate') {
-      primary = CI.touchscreen + ' / ' + CI.remote;
-      reason = '손으로 리모컨·스마트폰 조작이 가능하여 앱/리모컨 기반 제어가 적합합니다.';
+      primary = CI.remote + ' / ' + CI.touchscreen;
+      reason = '손으로 리모컨·스마트폰 조작이 가능하여 리모컨·스마트폰(앱) 기반 제어가 적합합니다.';
     } else if (p.handUse === 'fixed') {
-      primary = CI.bigswitch + ' / 거치형 ' + CI.remote;
-      reason = '고정된 조건에서 조작이 가능하여 큰 스위치·거치형 리모컨을 우선 검토합니다.';
+      primary = CI.fixedRemote;
+      reason = '기기를 고정한 상태에서 조작이 가능하여, 리모컨을 거치·고정하여 사용하는 방식을 권장합니다.';
     } else if (p.handUse === 'unable') {
       if (p.communication === 'good') {
         primary = CI.speaker;
-        reason = '손 조작이 어려우나 대화가 가능하여 음성(스마트 스피커) 제어가 적합합니다.';
+        needsWifi = true;
+        reason = '손 조작이 어려우나 대화가 가능하여 음성(스마트 스피커) 제어를 권장합니다. 스마트 스피커는 Wi-Fi 연결이 필요합니다.';
       } else if (p.communication === 'unclear') {
-        primary = CI.speaker + ' + ' + CI.automation;
-        reason = '음성 사용은 가능하나 발음 부정확으로 인식률 확인이 필요하여, 자동화 시나리오를 병행합니다.';
+        primary = CI.aac;
+        reason = '손 조작이 어렵고 발음이 부정확하여 음성 인식이 어려울 수 있습니다. AAC(보완대체의사소통) 앱을 설치하여 상징 기반으로 의사소통·제어하는 방식을 검토합니다.';
       } else if (p.communication === 'unable') {
-        primary = CI.automation;
-        reason = '손 조작·음성 사용이 모두 어려워 센서 기반 자동화 시나리오를 우선합니다.';
+        primary = CI.aac;
+        reason = '손 조작과 발화가 모두 어려워 음성 제어가 적합하지 않습니다. AAC 앱 또는 스위치·센서 기반 대체 인터페이스를 검토합니다.';
       } else {
-        primary = CI.automation;
-        reason = '손 조작이 어려워 자동화·음성 등 대체 인터페이스가 필요합니다. 대화 가능 여부를 입력하면 더 정밀해집니다.';
+        primary = null;
+        reason = '손 조작이 어렵습니다. 대화 가능 여부를 입력하면 음성(스마트 스피커) 또는 AAC 중 적합한 방식을 제안합니다.';
       }
     } else {
       primary = null;
@@ -1158,8 +1189,13 @@
 
     var platform = env.os ? (D.platformHint[env.os] || null) : null;
     var wifiWarning = env.wifi === 'no';
+    // 스피커(음성)를 권장했는데 Wi-Fi가 없으면 사용 불가
+    var speakerBlocked = needsWifi && env.wifi === 'no';
 
-    return { primary: primary, reason: reason, platform: platform, wifiWarning: wifiWarning };
+    return {
+      primary: primary, reason: reason, platform: platform,
+      wifiWarning: wifiWarning, needsWifi: needsWifi, speakerBlocked: speakerBlocked
+    };
   }
 
   /* ---------- 렌더 디스패치 ---------- */

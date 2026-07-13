@@ -408,8 +408,10 @@ window.SHData = (function () {
     touchscreen: '터치스크린 (스마트폰 앱)',
     speaker: '스마트 스피커 (음성)',
     remote: '리모컨',
+    fixedRemote: '고정형(거치형) 리모컨',
     bigswitch: '큰 스위치',
     robot: '스위치 로봇',
+    aac: 'AAC 앱 (보완대체의사소통)',
     automation: '자동화 시나리오 · 센서 기반'
   };
 
