@@ -95,7 +95,7 @@ html, body {
 main {
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 24px 20px 120px;
+  padding: 24px 20px 160px;
 }
 .card {
   background: var(--surface);
@@ -221,12 +221,41 @@ textarea { resize: vertical; min-height: 70px; }
 /* ---------- 버튼 ---------- */
 .actionbar {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: 60px; left: 0; right: 0;
   background: rgba(255,255,255,0.96);
   border-top: 1px solid var(--line);
   backdrop-filter: blur(6px);
   z-index: 25;
 }
+
+/* 하단 탭바 */
+.bottomnav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: flex;
+  z-index: 40;
+}
+.navtab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--muted);
+  padding: 6px 0;
+}
+.navtab .navicon { font-size: 1.25rem; line-height: 1; }
+.navtab .navlabel { font-size: 0.74rem; font-weight: 600; }
+.navtab.active { color: var(--primary-dark); }
+.navtab.active .navlabel { font-weight: 700; }
 .actionbar .inner {
   max-width: var(--maxw);
   margin: 0 auto;
@@ -255,7 +284,8 @@ textarea { resize: vertical; min-height: 70px; }
 /* ---------- 스플래시 ---------- */
 body.splash-mode .app-header,
 body.splash-mode .app-footer,
-body.splash-mode .actionbar { display: none !important; }
+body.splash-mode .actionbar,
+body.splash-mode .bottomnav { display: none !important; }
 body.splash-mode main { padding: 0; max-width: 100%; }
 
 .splash {

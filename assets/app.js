@@ -121,6 +121,7 @@
   var app = document.getElementById('app');
   var stepbar = document.getElementById('stepbar');
   var actionbar = document.getElementById('actionbar');
+  var bottomnav = document.getElementById('bottomnav');
 
   /* ---------- 유틸 ---------- */
   function el(tag, attrs, children) {
@@ -154,24 +155,32 @@
     });
   }
 
-  /* ---------- 헤더 '더보기' 링크 ---------- */
-  function updateHeaderNav() {
-    var nav = document.getElementById('header-nav');
-    if (!nav) return;
-    nav.innerHTML = '';
-    if (state.screen === 'splash') { nav.style.display = 'none'; return; }
-    nav.style.display = '';
-    var isMore = state.screen === 'more';
-    nav.appendChild(el('button', {
-      class: 'header-link' + (isMore ? ' active' : ''),
-      type: 'button',
-      onclick: function () { go(isMore ? 'intro' : 'more'); }
-    }, [isMore ? '← 돌아가기' : '더보기']));
+  /* ---------- 하단 탭바 (홈 / 설정) ---------- */
+  function renderBottomNav() {
+    if (!bottomnav) return;
+    bottomnav.innerHTML = '';
+    if (state.screen === 'splash') { bottomnav.style.display = 'none'; return; }
+    bottomnav.style.display = '';
+    var onMore = state.screen === 'more';
+    var tabs = [
+      { label: '홈', icon: '🏠', active: !onMore, onClick: function () { go('intro'); } },
+      { label: '설정', icon: '⚙️', active: onMore, onClick: function () { go('more'); } }
+    ];
+    tabs.forEach(function (t) {
+      bottomnav.appendChild(el('button', {
+        class: 'navtab' + (t.active ? ' active' : ''), type: 'button', onclick: t.onClick
+      }, [
+        el('span', { class: 'navicon' }, [t.icon]),
+        el('span', { class: 'navlabel' }, [t.label])
+      ]));
+    });
   }
 
   /* ---------- 하단 액션바 ---------- */
   function renderActions(buttons) {
     actionbar.innerHTML = '';
+    if (!buttons || buttons.length === 0) { actionbar.style.display = 'none'; return; }
+    actionbar.style.display = '';
     var inner = el('div', { class: 'inner' });
     var left = el('div', {}, []);
     var right = el('div', { class: 'no-print' }, []);
@@ -198,7 +207,7 @@
    * 화면 : 스플래시 (시작)
    * =======================================================*/
   function renderSplash() {
-    actionbar.innerHTML = '';
+    renderActions([]);
     app.innerHTML = '';
     var splash = el('div', {
       class: 'splash', role: 'button', tabindex: '0',
@@ -333,10 +342,11 @@
    * 화면 : 더보기 (만든 이야기 · 사용후기 · 자세한 후기)
    * =======================================================*/
   var storyOpen = false;
+  var shortcutOpen = false;
   function renderMore() {
     var container = el('div', {}, [
-      el('h1', { class: 'page-title' }, ['더보기']),
-      el('p', { class: 'page-sub' }, ['만든 사람의 이야기, 사용 후기, 자세한 후기 남기기입니다.'])
+      el('h1', { class: 'page-title' }, ['설정']),
+      el('p', { class: 'page-sub' }, ['소개, 사용 후기, 앱 업데이트, 홈 화면 바로가기 안내입니다.'])
     ]);
 
     /* 만든 사람의 이야기 (접기/펼치기) */
@@ -379,9 +389,49 @@
       el('div', { class: 'more-link-arrow' }, ['›'])
     ]));
 
+    /* 앱 최신 버전 업데이트 */
+    container.appendChild(el('div', { class: 'card', style: 'text-align:center' }, [
+      el('button', {
+        class: 'btn btn-primary', type: 'button', style: 'width:100%',
+        onclick: updateApp
+      }, ['🔄  지금 최신 버전으로 업데이트']),
+      el('p', { class: 'section-guide', style: 'margin:10px 0 0' }, [
+        '계속 업데이트 중입니다. 화면이 예전 그대로이면 눌러서 최신 버전을 받아주세요. (버전 ' + APP_VERSION + ')'
+      ])
+    ]));
+
+    /* 홈 화면에 바로가기 만들기 (접기/펼치기) */
+    var scCard = el('div', { class: 'card story-card' + (shortcutOpen ? ' open' : '') }, []);
+    scCard.appendChild(el('button', {
+      class: 'story-head', type: 'button',
+      onclick: function () { shortcutOpen = !shortcutOpen; render(); }
+    }, [
+      el('span', {}, ['📲  홈 화면에 바로가기 만들기']),
+      el('span', { class: 'story-caret' }, [shortcutOpen ? '⌃' : '⌄'])
+    ]));
+    if (shortcutOpen) {
+      scCard.appendChild(el('div', { class: 'story-body' }, [
+        el('p', {}, ['앱처럼 아이콘으로 바로 열 수 있어요. 기기별로 방법이 조금 다릅니다.']),
+        el('p', {}, [el('strong', {}, ['아이폰(사파리): ']), '하단 공유 버튼 ⬆️ → "홈 화면에 추가" → 추가']),
+        el('p', {}, [el('strong', {}, ['안드로이드(크롬): ']), '오른쪽 위 메뉴 ⋮ → "홈 화면에 추가"(또는 "앱 설치") → 추가']),
+        el('p', { class: 'section-guide' }, ['추가하면 홈 화면 아이콘으로 바로 실행되고, 주소를 매번 입력하지 않아도 됩니다.'])
+      ]));
+    }
+    container.appendChild(scCard);
+
     app.innerHTML = '';
     app.appendChild(container);
-    actionbar.innerHTML = ''; // 상단 헤더의 '돌아가기'를 사용
+    renderActions([]); // 하단 탭바로 이동
+  }
+
+  function updateApp() {
+    try {
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+      }
+    } catch (e) { /* noop */ }
+    // HTML은 must-revalidate 이므로 새로고침 시 최신 index + 최신 자원을 받음
+    location.reload();
   }
 
   function renderQuickReview() {
@@ -1283,7 +1333,7 @@
     else if (state.screen === 'performance') renderPerformance();
     else if (state.screen === 'result') renderResult();
     else if (state.screen === 'more') renderMore();
-    updateHeaderNav();
+    renderBottomNav();
   }
 
   // 시작 시 저장된 평가 복원 (있으면 데이터 유지, 화면은 항상 스플래시부터)

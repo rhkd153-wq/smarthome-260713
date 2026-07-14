@@ -1,0 +1,14 @@
+{
+  "name": "스마트 홈 솔루션",
+  "short_name": "스마트홈솔루션",
+  "description": "신체장애인의 자립을 위한 스마트 홈 가정 환경 수정 평가 도구",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f4ef",
+  "theme_color": "#cb5a0f",
+  "lang": "ko",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
