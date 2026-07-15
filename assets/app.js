@@ -1084,14 +1084,13 @@
       { id: 'bathroom', x: 212, y: 148, w: 156, h: 78, label: '화장실' },
       { id: 'entrance', x: 212, y: 230, w: 156, h: 86, label: '현관' }
     ];
-    var VW = 380, VH = 330, LH = 18;
+    var VW = 380, VH = 330;
     var svg = svgEl('svg', {
       viewBox: '0 0 ' + VW + ' ' + VH, width: '100%',
       preserveAspectRatio: 'xMidYMid meet', class: 'floorplan-svg'
     }, []);
 
     rooms.forEach(function (room) {
-      var space = D.spaces.filter(function (s) { return s.id === room.id; })[0];
       var devs = devMap[room.id] || [];
       var active = devs.length > 0;
 
@@ -1102,25 +1101,21 @@
         stroke: active ? '#cb5a0f' : '#c3b8aa',
         'stroke-width': active ? 2.5 : 1.5
       }));
-      // 방 이름
+      // 방 이름 (+ 기기 개수)
       svg.appendChild(svgEl('text', {
-        x: room.x + 12, y: room.y + 22, 'font-size': '15', 'font-weight': '700',
+        x: room.x + 12, y: room.y + 23, 'font-size': '15', 'font-weight': '700',
         fill: active ? '#a5470b' : '#a29587'
-      }, [room.label + (active ? '' : ' · 해당 없음')]));
+      }, [room.label + (active ? ' · ' + devs.length + '개' : ' · 해당 없음')]));
 
-      // 기기 목록 (방 높이에 맞춰 표시 개수 조절)
-      var maxLines = Math.max(1, Math.floor((room.h - 34) / LH));
-      var show = devs.length > maxLines ? devs.slice(0, maxLines - 1) : devs.slice(0, maxLines);
-      show.forEach(function (dev, i) {
+      // 방 안에는 기기 아이콘(이모지)만 콤팩트하게 (이름은 아래 목록에서)
+      var COL = 28, startX = room.x + 14, startY = room.y + 46;
+      var perRow = Math.max(1, Math.floor((room.w - 20) / COL));
+      devs.forEach(function (dev, i) {
+        var rr = Math.floor(i / perRow), cc = i % perRow;
         svg.appendChild(svgEl('text', {
-          x: room.x + 12, y: room.y + 44 + i * LH, 'font-size': '12.5', fill: '#3f2d1c'
-        }, [deviceEmoji(dev) + '  ' + dev]));
+          x: startX + cc * COL, y: startY + rr * COL, 'font-size': '19'
+        }, [deviceEmoji(dev)]));
       });
-      if (devs.length > show.length) {
-        svg.appendChild(svgEl('text', {
-          x: room.x + 12, y: room.y + 44 + show.length * LH, 'font-size': '11.5', fill: '#8a6b4a'
-        }, ['+' + (devs.length - show.length) + '개 더']));
-      }
     });
 
     // 현관 출입문 (스윙 아크) — 평면도 느낌
@@ -1133,10 +1128,24 @@
       x: e.x + e.w - 4, y: e.y + e.h - 46, width: 8, height: 34, fill: '#fff'
     }));
 
+    // 도면 아래 방별 전체 기기 목록 (모두 표시)
+    var legend = el('div', { class: 'floorplan-legend' }, []);
+    rooms.forEach(function (room) {
+      var devs = devMap[room.id] || [];
+      if (devs.length === 0) return;
+      legend.appendChild(el('div', { class: 'fp-leg-item' }, [
+        el('div', { class: 'fp-leg-room' }, [room.label]),
+        el('div', { class: 'fp-leg-devs' }, [devs.map(function (d) {
+          return deviceEmoji(d) + ' ' + d;
+        }).join('   ·   ')])
+      ]));
+    });
+
     var card = el('div', { class: 'card' }, [
       el('h3', {}, ['스마트 홈 설계도 (평면)']),
-      el('p', { class: 'section-guide' }, ['위에서 내려다본 집 평면도입니다. 도출된 스마트 홈 기기가 방마다 표시됩니다.']),
-      el('div', { class: 'floorplan-wrap' }, [svg])
+      el('p', { class: 'section-guide' }, ['위에서 내려다본 집 평면도입니다. 방 안 아이콘은 기기이며, 자세한 목록은 도면 아래에 있습니다.']),
+      el('div', { class: 'floorplan-wrap' }, [svg]),
+      legend
     ]);
     return card;
   }

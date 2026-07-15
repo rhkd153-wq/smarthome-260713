@@ -490,6 +490,14 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 /* 스마트 홈 설계도 (평면) */
 .floorplan-wrap { margin-top: 8px; }
 .floorplan-svg { display: block; width: 100%; max-width: 440px; margin: 0 auto; }
+.floorplan-legend { margin-top: 14px; }
+.fp-leg-item { padding: 10px 0; border-top: 1px dashed var(--line); }
+.fp-leg-item:first-child { border-top: none; }
+.fp-leg-room {
+  font-weight: 700; color: var(--primary-dark);
+  border-left: 4px solid var(--primary); padding-left: 8px; margin-bottom: 4px;
+}
+.fp-leg-devs { color: var(--text); font-size: 0.92rem; line-height: 1.6; padding-left: 12px; }
 
 .solution-space { margin-bottom: 22px; }
 .solution-space > .sp-title {
