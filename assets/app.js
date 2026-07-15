@@ -207,6 +207,20 @@
   }
   function perfKey(sp, task, act) { return sp + '::' + task + '::' + act; }
 
+  // SVG 요소 생성 (아이소메트릭 설계도용)
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs, children) {
+    var node = document.createElementNS(SVGNS, tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (attrs[k] != null) node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) {
+      if (c == null) return;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
   /* ---------- 진행바 ---------- */
   function renderStepbar() {
     stepbar.innerHTML = '';
@@ -1030,6 +1044,108 @@
   }
 
   /* =========================================================
+   * 스마트 홈 설계도 (아이소메트릭 2.5D 도식)
+   * =======================================================*/
+  function deviceEmoji(name) {
+    var map = [
+      ['스위치', '🔘'], ['무드등', '💡'], ['조명', '💡'], ['커튼', '🪟'], ['블라인드', '🪟'],
+      ['잠금장치', '🔒'], ['자동문', '🚪'], ['초인종', '🔔'], ['카메라', '📷'], ['문 센서', '🚪'],
+      ['플러그', '🔌'], ['리모컨', '📡'], ['허브', '🧩'], ['가습기', '💧'], ['온습도', '🌡️'],
+      ['에어컨', '❄️'], ['공기청정기', '🌀'], ['TV', '📺'], ['체중계', '⚖️'], ['웨어러블', '⌚'],
+      ['동작 감지', '🚶'], ['조도센서', '🔆'], ['사이렌', '🚨'], ['펫', '🐾'], ['로봇', '🤖']
+    ];
+    for (var i = 0; i < map.length; i++) { if (name.indexOf(map[i][0]) > -1) return map[i][1]; }
+    return '•';
+  }
+
+  // 공간별 기기 목록(권장 경로 기준, 중복 제거)
+  function spaceDeviceMap(limited, rec) {
+    var preferBLE = !!(rec && rec.wifiWarning);
+    var map = {};
+    limited.forEach(function (r) {
+      var opts = r.activity.tech;
+      var pick = preferBLE ? opts.filter(function (o) { return o.network === 'BLE'; })[0] : null;
+      pick = pick || opts.filter(function (o) { return o.network === 'Wi-Fi'; })[0] || opts[0];
+      if (!pick) return;
+      if (!map[r.space.id]) map[r.space.id] = [];
+      pick.devices.forEach(function (dev) {
+        if (map[r.space.id].indexOf(dev) < 0) map[r.space.id].push(dev);
+      });
+    });
+    return map;
+  }
+
+  function renderFloorPlanCard(limited, rec) {
+    var devMap = spaceDeviceMap(limited, rec);
+    // 공간 배치 (아이소메트릭 다이아몬드)
+    var layout = {
+      entrance: { gx: 0, gy: 0 }, living: { gx: 1, gy: 0 },
+      bedroom: { gx: 0, gy: 1 }, bathroom: { gx: 1, gy: 1 }
+    };
+    var HW = 120, HH = 64, DEP = 22, OX = 310, OY = 84;
+    var svg = svgEl('svg', {
+      viewBox: '0 0 620 340', width: '100%',
+      preserveAspectRatio: 'xMidYMid meet', class: 'floorplan-svg'
+    }, []);
+
+    // 뒤에서 앞으로 (cy 오름차순): 현관 → 침실/거실 → 화장실
+    var order = ['entrance', 'bedroom', 'living', 'bathroom'];
+    order.forEach(function (sid) {
+      var space = D.spaces.filter(function (s) { return s.id === sid; })[0];
+      var pos = layout[sid];
+      var cx = OX + (pos.gx - pos.gy) * 130;
+      var cy = OY + (pos.gx + pos.gy) * 70;
+      var devs = devMap[sid] || [];
+      var active = devs.length > 0;
+
+      var top = (cx) + ',' + (cy - HH), right = (cx + HW) + ',' + cy,
+        bot = cx + ',' + (cy + HH), left = (cx - HW) + ',' + cy;
+      var floorFill = active ? '#fceadd' : '#f1ece6';
+      var edge = active ? '#cb5a0f' : '#c9bcae';
+      // 좌/우 벽 (3D 깊이)
+      svg.appendChild(svgEl('polygon', {
+        points: (cx - HW) + ',' + cy + ' ' + cx + ',' + (cy + HH) + ' ' + cx + ',' + (cy + HH + DEP) + ' ' + (cx - HW) + ',' + (cy + DEP),
+        fill: active ? '#e2954f' : '#ddd2c6', stroke: edge, 'stroke-width': '1'
+      }));
+      svg.appendChild(svgEl('polygon', {
+        points: cx + ',' + (cy + HH) + ' ' + (cx + HW) + ',' + cy + ' ' + (cx + HW) + ',' + (cy + DEP) + ' ' + cx + ',' + (cy + HH + DEP),
+        fill: active ? '#c8721f' : '#cabeb0', stroke: edge, 'stroke-width': '1'
+      }));
+      // 바닥 면
+      svg.appendChild(svgEl('polygon', {
+        points: top + ' ' + right + ' ' + bot + ' ' + left,
+        fill: floorFill, stroke: edge, 'stroke-width': '1.5'
+      }));
+      // 공간 이름
+      svg.appendChild(svgEl('text', {
+        x: cx, y: cy - HH + 22, 'text-anchor': 'middle',
+        'font-size': '15', 'font-weight': '700', fill: active ? '#8a3b00' : '#a89a8c'
+      }, [space.label + (active ? '' : ' (해당 없음)')]));
+      // 기기 목록 (최대 4개 + 나머지)
+      var show = devs.slice(0, 4);
+      show.forEach(function (dev, i) {
+        svg.appendChild(svgEl('text', {
+          x: cx, y: cy - 8 + i * 15, 'text-anchor': 'middle',
+          'font-size': '11.5', fill: '#4a3520'
+        }, [deviceEmoji(dev) + ' ' + dev]));
+      });
+      if (devs.length > 4) {
+        svg.appendChild(svgEl('text', {
+          x: cx, y: cy - 8 + 4 * 15, 'text-anchor': 'middle',
+          'font-size': '11', fill: '#8a6b4a'
+        }, ['+' + (devs.length - 4) + '개 더']));
+      }
+    });
+
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['스마트 홈 설계도 (공간별)']),
+      el('p', { class: 'section-guide' }, ['도출된 스마트 홈 솔루션을 공간별로 배치한 도식입니다. 각 방에 필요한 기기가 표시됩니다.']),
+      el('div', { class: 'floorplan-wrap' }, [svg])
+    ]);
+    return card;
+  }
+
+  /* =========================================================
    * 화면 3 : 솔루션 제안서 (양식지 3)
    * =======================================================*/
   function renderResult() {
@@ -1113,13 +1229,20 @@
       ])
     ]));
 
-    /* --- 솔루션 본문 (공간별) --- */
+    /* --- 스마트 홈 설계도 (공간별 도식) --- */
+    if (limited.length > 0) container.appendChild(renderFloorPlanCard(limited, rec));
+
+    /* --- 솔루션 본문 (공간별) — 제한 활동(좌) → 솔루션(우) --- */
     var body = el('div', { class: 'card' }, [el('h3', {}, ['공간별 적정 스마트 홈 기술'])]);
     if (limited.length === 0) {
       body.appendChild(el('div', { class: 'empty-state' }, [
         '제한되는 활동(수행도 1·2)이 없습니다. 공간별 수행도를 다시 확인하세요.'
       ]));
     } else {
+      body.appendChild(el('div', { class: 'sol-colhead' }, [
+        el('span', {}, ['현재 제한 활동']),
+        el('span', {}, ['스마트 홈 솔루션'])
+      ]));
       D.spaces.forEach(function (space) {
         var rows = limited.filter(function (r) { return r.space.id === space.id; });
         if (rows.length === 0) return;
@@ -1273,14 +1396,13 @@
     }));
 
     return el('div', { class: 'sol-item' }, [
-      el('div', { class: 'sol-head' }, [
-        el('div', {}, [
-          el('div', { class: 'sol-activity' }, [r.activity.label]),
-          el('div', { class: 'sol-task' }, [r.task.label])
-        ]),
+      el('div', { class: 'sol-left' }, [
+        el('div', { class: 'sol-activity' }, [r.activity.label]),
+        el('div', { class: 'sol-task' }, [r.task.label]),
         levelBadge
       ]),
-      techList
+      el('div', { class: 'sol-arrow' }, ['→']),
+      el('div', { class: 'sol-right' }, [techList])
     ]);
   }
 

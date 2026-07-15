@@ -487,6 +487,10 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--primary-dark); }
 .stat .lbl { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
 
+/* 스마트 홈 설계도 */
+.floorplan-wrap { overflow-x: auto; margin-top: 6px; }
+.floorplan-svg { display: block; min-width: 320px; max-width: 620px; margin: 0 auto; }
+
 .solution-space { margin-bottom: 22px; }
 .solution-space > .sp-title {
   font-size: 1.1rem;
@@ -496,16 +500,34 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   padding-left: 10px;
   margin: 18px 0 10px;
 }
+.sol-colhead {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 6px;
+  margin: 4px 0 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
 .sol-item {
+  display: grid;
+  grid-template-columns: 1fr auto 1.25fr;
+  align-items: center;
+  gap: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 10px;
   background: #fcfdfe;
 }
-.sol-item .sol-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sol-item .sol-activity { font-weight: 700; }
-.sol-item .sol-task { color: var(--muted); font-size: 0.82rem; }
+.sol-item .sol-task { color: var(--muted); font-size: 0.82rem; margin: 2px 0 6px; }
+.sol-arrow { color: var(--primary); font-weight: 800; font-size: 1.4rem; text-align: center; }
+@media (max-width: 560px) {
+  .sol-item { grid-template-columns: 1fr; gap: 8px; }
+  .sol-arrow { transform: rotate(90deg); font-size: 1.1rem; }
+  .sol-colhead { display: none; }
+}
 .badge {
   display: inline-block;
   font-size: 0.74rem;
