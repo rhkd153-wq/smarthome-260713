@@ -343,85 +343,119 @@
    * =======================================================*/
   var storyOpen = false;
   var shortcutOpen = false;
+  var copyrightOpen = false;
   function renderMore() {
     var container = el('div', {}, [
       el('h1', { class: 'page-title' }, ['설정']),
       el('p', { class: 'page-sub' }, ['소개, 사용 후기, 앱 업데이트, 홈 화면 바로가기 안내입니다.'])
     ]);
 
-    /* 만든 사람의 이야기 (접기/펼치기) */
-    var storyCard = el('div', { class: 'card story-card' + (storyOpen ? ' open' : '') }, []);
-    storyCard.appendChild(el('button', {
-      class: 'story-head', type: 'button',
-      onclick: function () { storyOpen = !storyOpen; render(); }
-    }, [
-      el('span', {}, ['🌳  만든 사람의 이야기']),
-      el('span', { class: 'story-caret' }, [storyOpen ? '⌃' : '⌄'])
-    ]));
-    if (storyOpen) {
-      var body = el('div', { class: 'story-body' }, []);
-      [
-        '“우리는 기기를 설치하는 사람이 아니라, 환경을 바꿔 ‘가능성’을 만드는 사람입니다.”',
-        '스마트 홈은 하루아침에 완성되지 않습니다. 사용자의 하루를 관찰하고, 무엇이 어려운지 함께 확인하고, 작은 기기 하나로 ‘할 수 있음’을 되찾는 과정이 쌓여 자립이 됩니다.',
-        '스마트 홈 솔루션은 기초 스크리닝부터 주요구 확인, 공간별 수행도, 적정 스마트 홈 기술 도출까지 평가자가 누구나 같은 흐름으로 대상자 맞춤 솔루션을 낼 수 있도록 만들었습니다.',
-        '그러나 기기 도입만으로 기능이 완성되지는 않습니다. 임상가의 중재·교육과 함께 활용해 주시길 권합니다.'
-      ].forEach(function (p) { body.appendChild(el('p', {}, [p])); });
-      body.appendChild(el('div', { class: 'story-sign' }, ['— 작치빌더(otbuilder) 드림']));
-      storyCard.appendChild(body);
-    }
-    container.appendChild(storyCard);
+    /* 소개 — 만든 사람의 이야기 (접기/펼치기) */
+    container.appendChild(iconCard({
+      icon: '🌳', tone: 'green', title: '만든 사람의 이야기', desc: '이 도구를 만든 이유를 소개합니다.',
+      caret: true, open: storyOpen,
+      onClick: function () { storyOpen = !storyOpen; render(); },
+      body: storyOpen ? storyBody() : null
+    }));
 
     /* 간단한 사용후기 (별점 + 메모 → 이메일 전송) */
     container.appendChild(renderQuickReview());
 
     /* 자세한 사용 후기 남기기 (설문 링크) */
-    container.appendChild(el('button', {
-      class: 'more-link-card', type: 'button',
-      onclick: openSurvey
-    }, [
-      el('div', { class: 'more-link-icon' }, ['💬']),
-      el('div', {}, [
-        el('div', { class: 'more-link-title' }, ['자세한 사용 후기 남기기']),
-        el('div', { class: 'more-link-desc' }, [
-          SURVEY_URL ? '앱 사용성평가 설문으로 연결됩니다.' : '준비 중입니다. 곧 제공될 예정입니다.'
-        ])
-      ]),
-      el('div', { class: 'more-link-arrow' }, ['›'])
-    ]));
+    container.appendChild(iconCard({
+      icon: '💬', tone: 'primary', title: '자세한 사용 후기 남기기',
+      desc: SURVEY_URL ? '앱 사용성평가 설문으로 연결됩니다.' : '준비 중입니다. 곧 제공될 예정입니다.',
+      onClick: openSurvey
+    }));
 
-    /* 앱 최신 버전 업데이트 */
-    container.appendChild(el('div', { class: 'card', style: 'text-align:center' }, [
-      el('button', {
-        class: 'btn btn-primary', type: 'button', style: 'width:100%',
-        onclick: updateApp
-      }, ['🔄  지금 최신 버전으로 업데이트']),
-      el('p', { class: 'section-guide', style: 'margin:10px 0 0' }, [
-        '계속 업데이트 중입니다. 화면이 예전 그대로이면 눌러서 최신 버전을 받아주세요. (버전 ' + APP_VERSION + ')'
-      ])
-    ]));
+    /* 앱 업데이트 */
+    container.appendChild(iconCard({
+      icon: '🔄', tone: 'gray', title: '앱 최신 버전으로 업데이트',
+      desc: '화면이 예전 그대로일 때 눌러 새로고침합니다. (버전 ' + APP_VERSION + ')',
+      onClick: updateApp
+    }));
 
-    /* 홈 화면에 바로가기 만들기 (접기/펼치기) */
-    var scCard = el('div', { class: 'card story-card' + (shortcutOpen ? ' open' : '') }, []);
-    scCard.appendChild(el('button', {
-      class: 'story-head', type: 'button',
-      onclick: function () { shortcutOpen = !shortcutOpen; render(); }
-    }, [
-      el('span', {}, ['📲  홈 화면에 바로가기 만들기']),
-      el('span', { class: 'story-caret' }, [shortcutOpen ? '⌃' : '⌄'])
+    /* 홈 화면에 추가 (접기/펼치기) */
+    container.appendChild(iconCard({
+      icon: '📲', tone: 'gray', title: '홈 화면에 추가',
+      desc: '앱처럼 아이콘으로 바로 여는 방법을 안내해드립니다.',
+      caret: true, open: shortcutOpen,
+      onClick: function () { shortcutOpen = !shortcutOpen; render(); },
+      body: shortcutOpen ? shortcutBody() : null
+    }));
+
+    /* 평가 기록 초기화 */
+    container.appendChild(iconCard({
+      icon: '🗑', tone: 'danger', title: '평가 기록 초기화',
+      desc: '저장된 평가 내용이 모두 지워집니다. 되돌릴 수 없어요.',
+      onClick: resetAll
+    }));
+
+    /* 저작권 안내 (접기/펼치기) */
+    container.appendChild(iconCard({
+      icon: '©', tone: 'gray', title: '저작권 안내', desc: '이용 범위와 문의처를 안내합니다.',
+      caret: true, open: copyrightOpen,
+      onClick: function () { copyrightOpen = !copyrightOpen; render(); },
+      body: copyrightOpen ? copyrightBody() : null
+    }));
+
+    /* 하단 표기 */
+    container.appendChild(el('div', { class: 'settings-foot' }, [
+      el('div', { class: 'settings-foot-name' }, ['스마트 홈 솔루션 · Smart Home Solution']),
+      el('div', { class: 'settings-foot-ver' }, [APP_VERSION])
     ]));
-    if (shortcutOpen) {
-      scCard.appendChild(el('div', { class: 'story-body' }, [
-        el('p', {}, ['앱처럼 아이콘으로 바로 열 수 있어요. 기기별로 방법이 조금 다릅니다.']),
-        el('p', {}, [el('strong', {}, ['아이폰(사파리): ']), '하단 공유 버튼 ⬆️ → "홈 화면에 추가" → 추가']),
-        el('p', {}, [el('strong', {}, ['안드로이드(크롬): ']), '오른쪽 위 메뉴 ⋮ → "홈 화면에 추가"(또는 "앱 설치") → 추가']),
-        el('p', { class: 'section-guide' }, ['추가하면 홈 화면 아이콘으로 바로 실행되고, 주소를 매번 입력하지 않아도 됩니다.'])
-      ]));
-    }
-    container.appendChild(scCard);
 
     app.innerHTML = '';
     app.appendChild(container);
     renderActions([]); // 하단 탭바로 이동
+  }
+
+  /* 아이콘 카드 (설정 항목 공통) */
+  function iconCard(opts) {
+    var card = el('div', { class: 'setting-card' + (opts.open ? ' open' : '') }, []);
+    card.appendChild(el('button', {
+      class: 'setting-head', type: 'button', onclick: opts.onClick
+    }, [
+      el('span', { class: 'setting-icon icon-' + (opts.tone || 'gray') }, [opts.icon]),
+      el('span', { class: 'setting-main' }, [
+        el('span', { class: 'setting-title' + (opts.tone === 'danger' ? ' danger' : '') }, [opts.title]),
+        opts.desc ? el('span', { class: 'setting-desc' }, [opts.desc]) : null
+      ]),
+      el('span', { class: 'setting-arrow' }, [opts.caret ? (opts.open ? '⌃' : '⌄') : '›'])
+    ]));
+    if (opts.open && opts.body) card.appendChild(el('div', { class: 'setting-body' }, opts.body));
+    return card;
+  }
+
+  function storyBody() {
+    var nodes = [];
+    [
+      '“우리는 기기를 설치하는 사람이 아니라, 환경을 바꿔 ‘가능성’을 만드는 사람입니다.”',
+      '스마트 홈은 하루아침에 완성되지 않습니다. 사용자의 하루를 관찰하고, 무엇이 어려운지 함께 확인하고, 작은 기기 하나로 ‘할 수 있음’을 되찾는 과정이 쌓여 자립이 됩니다.',
+      '스마트 홈 솔루션은 기초 스크리닝부터 주요구 확인, 공간별 수행도, 적정 스마트 홈 기술 도출까지 평가자가 누구나 같은 흐름으로 대상자 맞춤 솔루션을 낼 수 있도록 만들었습니다.',
+      '그러나 기기 도입만으로 기능이 완성되지는 않습니다. 임상가의 중재·교육과 함께 활용해 주시길 권합니다.'
+    ].forEach(function (p) { nodes.push(el('p', {}, [p])); });
+    nodes.push(el('div', { class: 'story-sign' }, ['— 작치빌더(otbuilder) 드림']));
+    return nodes;
+  }
+
+  function shortcutBody() {
+    return [
+      el('p', {}, ['앱처럼 아이콘으로 바로 열 수 있어요. 기기별로 방법이 조금 다릅니다.']),
+      el('p', {}, [el('strong', {}, ['아이폰(사파리): ']), '하단 공유 버튼 ⬆️ → “홈 화면에 추가” → 추가']),
+      el('p', {}, [el('strong', {}, ['안드로이드(크롬): ']), '오른쪽 위 메뉴 ⋮ → “홈 화면에 추가”(또는 “앱 설치”) → 추가']),
+      el('p', { class: 'section-guide' }, ['추가하면 홈 화면 아이콘으로 바로 실행되고, 주소를 매번 입력하지 않아도 됩니다.'])
+    ];
+  }
+
+  function copyrightBody() {
+    var mail = el('a', { href: 'mailto:' + CONTACT_EMAIL }, [CONTACT_EMAIL]);
+    return [
+      el('p', { class: 'copyright-head' }, ['© 2026 문광태 (Kwangtae Moon) · 작치빌더(otbuilder). All rights reserved.']),
+      el('p', {}, ['스마트 홈 솔루션의 소스코드, 화면 디자인, 직접 제작한 아이콘·일러스트레이션(SVG), 평가 흐름·양식 구성, 문구, 데이터 구조 등 일체의 표현물은 대한민국 저작권법의 보호를 받습니다.']),
+      el('p', {}, ['저작권자의 사전 서면 동의 없이 복제·배포·전송·전시, 2차적 저작물 작성(개작·번안 포함), 상업적 이용, 유사 서비스의 제작·배포, 저작권 표시의 제거 또는 변경을 금지합니다.']),
+      el('p', { class: 'section-guide' }, ['임상·교육 목적의 비영리 사용은 자유롭게 하실 수 있습니다. 그 밖의 이용이나 협업 문의는 ', mail, ' 로 연락 주세요.'])
+    ];
   }
 
   function updateApp() {

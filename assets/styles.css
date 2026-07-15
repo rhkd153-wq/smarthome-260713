@@ -368,6 +368,56 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .more-link-desc { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
 .more-link-arrow { margin-left: auto; color: var(--muted); font-size: 1.6rem; }
 
+/* 설정 아이콘 카드 */
+.setting-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.setting-card.open { border-color: var(--primary); }
+.setting-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: none;
+  border: none;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.setting-icon {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; color: #fff;
+  font-weight: 700;
+}
+.setting-icon.icon-primary { background: var(--primary); }
+.setting-icon.icon-gray { background: #8a8078; }
+.setting-icon.icon-green { background: #4a9d6d; }
+.setting-icon.icon-danger { background: var(--danger); }
+.setting-main { display: flex; flex-direction: column; min-width: 0; }
+.setting-title { font-weight: 700; color: var(--text); }
+.setting-title.danger { color: var(--danger); }
+.setting-desc { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+.setting-arrow { margin-left: auto; color: var(--muted); font-size: 1.2rem; padding-left: 8px; }
+.setting-body { padding: 4px 18px 18px; }
+.setting-body p { margin: 0 0 12px; line-height: 1.7; }
+.setting-body p:first-child { margin-top: 0; }
+.setting-body a { color: var(--primary-dark); }
+.copyright-head { color: var(--primary-dark); font-weight: 700; }
+
+/* 설정 하단 표기 */
+.settings-foot { text-align: center; padding: 14px 0 4px; }
+.settings-foot-name { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+.settings-foot-ver { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
 /* ---------- 인트로 ---------- */
 .hero { text-align: center; padding: 20px 0 8px; }
 .hero .icon { font-size: 3rem; }
