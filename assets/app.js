@@ -1263,6 +1263,9 @@
     /* --- 키트 구성 + 통합 기기 목록 --- */
     if (limited.length > 0) container.appendChild(renderKitCard(limited, rec));
 
+    /* --- 연결 구조 및 구매 안내 --- */
+    if (limited.length > 0) container.appendChild(renderConnectivityCard(limited, rec));
+
     /* --- 중재 계획 및 유의사항 (처리 과정 반영) --- */
     container.appendChild(renderInterventionCard());
 
@@ -1447,6 +1450,91 @@
     });
     return Object.keys(map).map(function (k) { return map[k]; })
       .sort(function (a, b) { return b.activities.length - a.activities.length; });
+  }
+
+  /* =========================================================
+   * 연결 구조 및 구매 안내 (리모컨 허브 vs 스마트 허브 등)
+   * =======================================================*/
+  function computeConnectivity(limited, rec) {
+    var devices = computeDeviceList(limited, rec); // 중복 제거된 기기 목록
+    var groups = { wifi: [], smarthub: [], ir: [], ble: [] };
+    devices.forEach(function (d) {
+      var c = D.deviceConnectivity[d.name] || 'wifi';
+      if (c === 'smarthub' || c === 'hub_zigbee') groups.smarthub.push(d.name);
+      else if (c === 'ir') groups.ir.push(d.name);
+      else if (c === 'ble') groups.ble.push(d.name);
+      else groups.wifi.push(d.name);
+    });
+    return {
+      groups: groups,
+      needSmartHub: groups.smarthub.length > 0,
+      hasSmartHubDevice: groups.smarthub.indexOf('스마트 허브') > -1,
+      needIrHub: groups.ir.length > 0,
+      hasBle: groups.ble.length > 0
+    };
+  }
+
+  function renderConnectivityCard(limited, rec) {
+    var cn = computeConnectivity(limited, rec);
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['연결 구조 및 구매 안내']),
+      el('p', { class: 'section-guide' }, ['기기마다 연결 방식이 다릅니다. 실제 구매·자동화 설정이 어긋나지 않도록 아래 구조를 확인하세요.'])
+    ]);
+
+    // 꼭 필요한 허브 요약
+    var needChips = [];
+    if (cn.needSmartHub) needChips.push('스마트 허브');
+    if (cn.needIrHub) needChips.push('리모컨 허브(IR)');
+    if (needChips.length) {
+      card.appendChild(el('div', { class: 'hub-need' }, [
+        el('span', { class: 'hub-need-label' }, ['필요한 허브']),
+        el('div', { class: 'choices' }, needChips.map(function (h) {
+          return el('span', { class: 'hub-chip' }, [h]);
+        }))
+      ]));
+    }
+    // Wi-Fi 없음 경고
+    if (rec && rec.wifiWarning) {
+      card.appendChild(el('div', { class: 'note note-danger' }, [
+        el('strong', {}, ['Wi-Fi 필요: ']),
+        '스마트 허브·리모컨 허브·Wi-Fi 기기는 모두 인터넷(공유기)이 있어야 동작합니다. 현재 Wi-Fi가 없어 네트워크 구축이 먼저 필요합니다.'
+      ]));
+    }
+
+    // 연결 방식별 그룹
+    var order = ['wifi', 'smarthub', 'ir', 'ble'];
+    order.forEach(function (key) {
+      var devs = cn.groups[key];
+      if (!devs || devs.length === 0) return;
+      var info = D.connectivityInfo[key];
+      // 중복 제거
+      var uniq = devs.filter(function (v, i) { return devs.indexOf(v) === i; });
+      card.appendChild(el('div', { class: 'conn-group' }, [
+        el('div', { class: 'conn-head' }, [
+          el('span', { class: 'conn-icon' }, [info.icon]),
+          el('span', { class: 'conn-label' }, [info.label]),
+          info.needsHub ? el('span', { class: 'conn-tag' }, ['허브 필요']) : el('span', { class: 'conn-tag conn-tag-ok' }, ['허브 불필요'])
+        ]),
+        el('div', { class: 'conn-devs' }, [uniq.join('  ·  ')]),
+        el('div', { class: 'conn-desc' }, [info.desc])
+      ]));
+    });
+
+    // 스마트 허브가 필요한데 목록에 명시적 허브가 없으면 안내
+    if (cn.needSmartHub && !cn.hasSmartHubDevice) {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, ['확인: ']),
+        '위 "스마트 허브" 그룹의 기기를 쓰려면 스마트 허브(예: SmartThings·Aqara·헤이홈 허브 등)를 함께 구매해야 합니다.'
+      ]));
+    }
+
+    // 구매·설치 순서
+    card.appendChild(el('div', { class: 'note' }, [
+      el('strong', {}, ['구매·설치 순서: ']),
+      '① Wi-Fi(공유기) 확인 → ② 허브(스마트 허브·리모컨 허브) 먼저 설치 → ③ 각 기기를 허브/앱에 페어링 → ④ 자동화 시나리오 설정. ',
+      '리모컨 허브(IR)는 TV·에어컨 조작용, 스마트 허브는 센서·잠금장치 등 연결용으로 역할이 다르니 용도에 맞게 준비하세요.'
+    ]));
+    return card;
   }
 
   function renderKitCard(limited, rec) {

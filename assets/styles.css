@@ -596,6 +596,32 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .platform-name { font-weight: 700; color: var(--primary-dark); }
 .platform-desc { font-size: 0.86rem; color: var(--muted); margin-top: 2px; }
 
+/* 연결 구조 및 구매 안내 */
+.hub-need { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.hub-need-label { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+.hub-chip {
+  display: inline-block; font-weight: 700; font-size: 0.85rem;
+  color: #fff; background: var(--primary); padding: 5px 12px; border-radius: 999px;
+}
+.conn-group {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: #fcfdfe;
+}
+.conn-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.conn-icon { font-size: 1.15rem; }
+.conn-label { font-weight: 700; }
+.conn-tag {
+  margin-left: auto; font-size: 0.72rem; font-weight: 700;
+  background: #fff4e0; color: #b26b00; padding: 2px 8px; border-radius: 999px;
+}
+.conn-tag-ok { background: #e6f4ea; color: var(--ok); }
+.conn-devs { margin-top: 6px; font-weight: 600; color: var(--text); font-size: 0.92rem; }
+.conn-desc { margin-top: 6px; color: var(--muted); font-size: 0.86rem; line-height: 1.6; }
+
 /* 대상자 정보 그리드 */
 .profile-grid {
   display: grid;

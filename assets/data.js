@@ -484,6 +484,58 @@ window.SHData = (function () {
     '스윙식 자동문': 'advanced'
   };
 
+  /* =========================================================
+   * 기기별 연결 방식 (구매·자동화 설정 안내용)
+   *  - wifi      : 공유기에 직접 연결 (허브 불필요)
+   *  - hub_zigbee: 저전력 무선(Zigbee/Thread) → 스마트 허브 필요
+   *  - smarthub  : 스마트 허브 장치 자체
+   *  - ir        : 리모컨 허브(적외선) — TV·에어컨 등 기존 리모컨 가전 제어
+   *  - ble       : 블루투스 근거리 (원격·자동화하려면 허브 권장)
+   * =======================================================*/
+  var deviceConnectivity = {
+    '스마트 허브': 'smarthub',
+    '스마트 리모컨 허브': 'ir',
+    '스위치 로봇': 'ble',
+    '웨어러블 디바이스': 'ble',
+    '스마트 잠금장치': 'hub_zigbee',
+    '스마트 커튼/블라인드': 'hub_zigbee',
+    '조도센서': 'hub_zigbee',
+    '온습도 센서': 'hub_zigbee',
+    '동작 감지기': 'hub_zigbee',
+    '문 센서': 'hub_zigbee',
+    '스마트 사이렌': 'hub_zigbee',
+    '스마트 스위치': 'hub_zigbee',
+    '스마트 무드등': 'wifi',
+    '스마트 플러그': 'wifi',
+    '스마트 카메라': 'wifi',
+    '스마트 초인종': 'wifi',
+    '스마트 에어컨': 'wifi',
+    '스마트 가습기': 'wifi',
+    '스마트 공기청정기': 'wifi',
+    '스마트 체중계': 'wifi',
+    '스마트 펫 음식조절기': 'wifi',
+    '스윙식 자동문': 'wifi'
+  };
+  // 연결 방식 그룹 설명
+  var connectivityInfo = {
+    wifi: {
+      icon: '🛜', label: 'Wi-Fi 직접 연결', needsHub: false,
+      desc: '집 공유기(Wi-Fi)에 바로 연결됩니다. 별도 허브 없이 각 제조사 앱이나 플랫폼으로 제어할 수 있어요.'
+    },
+    smarthub: {
+      icon: '🧩', label: '스마트 허브 (Zigbee·Thread·Matter)', needsHub: true,
+      desc: '센서·잠금장치·스위치 같은 저전력 무선 기기를 하나로 묶어 인터넷에 연결하는 중심 장치입니다. 이 허브가 있어야 해당 기기들이 연결되고 자동화가 됩니다. Matter/Thread를 지원하면 여러 브랜드를 함께 쓰기 쉽습니다.'
+    },
+    ir: {
+      icon: '📡', label: '리모컨 허브 (적외선 IR)', needsHub: true,
+      desc: 'TV·에어컨처럼 리모컨으로 켜던 가전을 대신 조작합니다. 적외선(IR) 신호를 쏘는 장치로, 스마트 허브와는 역할이 다릅니다. (별도 장치)'
+    },
+    ble: {
+      icon: '🔵', label: 'BLE 근거리(블루투스)', needsHub: false,
+      desc: '가까운 거리에서 스마트폰과 직접 연결됩니다. 외출 중 원격 제어하거나 자동화하려면 허브(브릿지)를 함께 두는 것이 좋습니다.'
+    }
+  };
+
   var kitLevels = {
     beginner: {
       key: 'beginner',
@@ -542,6 +594,8 @@ window.SHData = (function () {
     platforms: platforms,
     deviceTier: deviceTier,
     kitLevels: kitLevels,
+    deviceConnectivity: deviceConnectivity,
+    connectivityInfo: connectivityInfo,
     activityCategoryById: activityCategoryById,
     needCategoryMap: needCategoryMap
   };
