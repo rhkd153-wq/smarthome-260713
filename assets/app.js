@@ -1478,8 +1478,16 @@
     var cn = computeConnectivity(limited, rec);
     var card = el('div', { class: 'card' }, [
       el('h3', {}, ['연결 구조 및 구매 안내']),
-      el('p', { class: 'section-guide' }, ['기기마다 연결 방식이 다릅니다. 실제 구매·자동화 설정이 어긋나지 않도록 아래 구조를 확인하세요.'])
+      el('p', { class: 'section-guide' }, ['기기마다 연결 방식이 다르고, 같은 종류라도 제조사·모델에 따라 달라집니다. 아래는 일반적인 예시 분류입니다.'])
     ]);
+
+    // 구매 전 반드시 확인 (강조)
+    card.appendChild(el('div', { class: 'note note-confirm' }, [
+      el('strong', {}, ['⚠️ 구매 전 꼭 확인: ']),
+      '같은 잠금장치·스위치·자동문이라도 제조사·모델에 따라 Wi-Fi일 수도, Zigbee일 수도 있습니다. 실제 구매할 때는 제품 사양에서 ',
+      el('b', {}, ['연결 방식(Wi-Fi·Zigbee·Thread) · Matter 지원 여부 · 호환 플랫폼']),
+      ' 을 반드시 확인하세요.'
+    ]));
 
     // 꼭 필요한 허브 요약
     var needChips = [];

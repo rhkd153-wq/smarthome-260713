@@ -570,6 +570,9 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .note strong { color: #b26b00; }
 .note-danger { background: #fdecec; border-color: #f5b5b5; }
 .note-danger strong { color: var(--danger); }
+.note-confirm { background: #fff1e2; border: 1.5px solid var(--primary); }
+.note-confirm strong { color: var(--primary-dark); }
+.note-confirm b { color: var(--primary-dark); }
 
 .empty-state { text-align: center; color: var(--muted); padding: 30px 10px; }
 
