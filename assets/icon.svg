@@ -1,5 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
-  <rect width="192" height="192" rx="42" fill="#cb5a0f"/>
-  <path d="M96 44 L150 90 H136 V148 H108 V112 H84 V148 H56 V90 H42 Z" fill="#ffffff"/>
-  <rect x="98" y="120" width="14" height="20" rx="2" fill="#cb5a0f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e2731a"/>
+      <stop offset="1" stop-color="#c14f08"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#bg)"/>
+
+  <!-- 스마트 신호 (와이파이) -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-width="20">
+    <path d="M181 173 a106 106 0 0 1 150 0" opacity="0.55"/>
+    <path d="M212 204 a62 62 0 0 1 88 0" opacity="0.8"/>
+  </g>
+  <circle cx="256" cy="238" r="15" fill="#ffffff"/>
+
+  <!-- 집 -->
+  <path d="M256 250 L410 372 H370 V430 H142 V372 H102 Z" fill="#ffffff"/>
+  <rect x="232" y="360" width="48" height="70" rx="6" fill="#c14f08"/>
+  <rect x="170" y="322" width="46" height="42" rx="5" fill="#c14f08"/>
 </svg>
