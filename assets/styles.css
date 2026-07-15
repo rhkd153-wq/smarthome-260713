@@ -413,6 +413,48 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .setting-body a { color: var(--primary-dark); }
 .copyright-head { color: var(--primary-dark); font-weight: 700; }
 
+/* 평가 기록 목록 */
+.record-card {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.record-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.record-main:hover { background: var(--primary-soft); }
+.record-top { display: flex; align-items: center; gap: 8px; }
+.record-name { font-weight: 700; font-size: 1rem; }
+.record-badge {
+  font-size: 0.7rem; font-weight: 700;
+  color: #fff; background: var(--primary);
+  padding: 2px 8px; border-radius: 999px;
+}
+.record-meta { color: var(--muted); font-size: 0.84rem; margin-top: 4px; }
+.record-del {
+  flex: 0 0 auto;
+  border: none;
+  border-left: 1px solid var(--line);
+  background: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 16px;
+  color: var(--muted);
+}
+.record-del:hover { background: #fdecec; }
+
 /* 설정 하단 표기 */
 .settings-foot { text-align: center; padding: 14px 0 4px; }
 .settings-foot-name { color: var(--muted); font-weight: 600; font-size: 0.85rem; }

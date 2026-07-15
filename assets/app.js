@@ -25,7 +25,7 @@
       screen: 'splash',
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '',
-              reviewRating: 0, reviewText: '', perfShowAll: false },
+              reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '' },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
@@ -37,6 +37,70 @@
 
   /* ---------- 지속성 (자동 저장 / 불러오기) ---------- */
   var SAVE_KEY = 'smarthome_solution_state_v1';
+  var RECORDS_KEY = 'smarthome_solution_records_v1';
+
+  /* ---------- 평가 기록 (지난 평가 저장/조회) ---------- */
+  function loadRecords() {
+    try {
+      var raw = localStorage.getItem(RECORDS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function saveRecords(arr) {
+    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+  function ensureRecordId() {
+    if (!state.meta.recordId) {
+      state.meta.recordId = 'r' + Date.now() + Math.random().toString(36).slice(2, 7);
+    }
+    return state.meta.recordId;
+  }
+  function snapshotState() {
+    return JSON.parse(JSON.stringify({
+      meta: state.meta, currentActivity: state.currentActivity, needs: state.needs,
+      personal: state.personal, environment: state.environment, performance: state.performance
+    }));
+  }
+  // 현재 평가를 기록에 저장(있으면 갱신)
+  function upsertCurrentRecord() {
+    if (!hasAnyData()) return;
+    var id = ensureRecordId();
+    var records = loadRecords();
+    var rec = { recordId: id, savedAt: Date.now(), snapshot: snapshotState() };
+    var idx = -1;
+    for (var i = 0; i < records.length; i++) { if (records[i].recordId === id) { idx = i; break; } }
+    if (idx > -1) records[idx] = rec; else records.push(rec);
+    saveRecords(records);
+  }
+  function deleteRecord(id) {
+    saveRecords(loadRecords().filter(function (r) { return r.recordId !== id; }));
+  }
+  function loadRecordIntoState(id) {
+    var rec = loadRecords().filter(function (r) { return r.recordId === id; })[0];
+    if (!rec) return;
+    var fresh = blankState();
+    var snap = rec.snapshot || {};
+    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance'].forEach(function (k) {
+      if (snap[k] != null) fresh[k] = snap[k];
+    });
+    var mDefaults = blankState().meta;
+    Object.keys(mDefaults).forEach(function (k) { if (fresh.meta[k] == null) fresh.meta[k] = mDefaults[k]; });
+    fresh.meta.recordId = id;
+    state = fresh;
+    state.screen = 'result';
+    saveState();
+    render();
+  }
+  // 스냅샷 요약 (기록 목록 표시용)
+  function recordSummary(snap) {
+    var needsN = 0, limitedN = 0;
+    var needs = snap.needs || {};
+    Object.keys(needs).forEach(function (k) { if (needs[k] === true) needsN++; });
+    var perf = snap.performance || {};
+    Object.keys(perf).forEach(function (k) { if (perf[k] === 1 || perf[k] === 2) limitedN++; });
+    return { name: (snap.personal && snap.personal.name) || '', needsN: needsN, limitedN: limitedN };
+  }
 
   function saveState() {
     try {
@@ -161,10 +225,11 @@
     bottomnav.innerHTML = '';
     if (state.screen === 'splash') { bottomnav.style.display = 'none'; return; }
     bottomnav.style.display = '';
-    var onMore = state.screen === 'more';
+    var s = state.screen;
     var tabs = [
-      { label: '홈', icon: '🏠', active: !onMore, onClick: function () { go('intro'); } },
-      { label: '설정', icon: '⚙️', active: onMore, onClick: function () { go('more'); } }
+      { label: '홈', icon: '🏠', active: s !== 'more' && s !== 'records', onClick: function () { go('intro'); } },
+      { label: '기록', icon: '📁', active: s === 'records', onClick: function () { go('records'); } },
+      { label: '설정', icon: '⚙️', active: s === 'more', onClick: function () { go('more'); } }
     ];
     tabs.forEach(function (t) {
       bottomnav.appendChild(el('button', {
@@ -447,6 +512,62 @@
       el('p', { class: 'section-guide' }, ['추가하면 홈 화면 아이콘으로 바로 실행되고, 주소를 매번 입력하지 않아도 됩니다.'])
     ];
   }
+
+  /* =========================================================
+   * 화면 : 기록 (지난 평가 목록)
+   * =======================================================*/
+  function renderRecords() {
+    var records = loadRecords().sort(function (a, b) { return b.savedAt - a.savedAt; });
+    var container = el('div', {}, [
+      el('h1', { class: 'page-title' }, ['평가 기록']),
+      el('p', { class: 'page-sub' }, ['이 기기에 저장된 지난 평가입니다. 항목을 눌러 다시 열어 보거나 삭제할 수 있습니다.'])
+    ]);
+
+    if (records.length === 0) {
+      container.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'empty-state' }, [
+          '저장된 평가가 없습니다.', el('br', {}, []),
+          '평가를 진행해 "솔루션 제안" 단계까지 가면 자동으로 여기에 저장됩니다.'
+        ])
+      ]));
+    } else {
+      records.forEach(function (r) {
+        var s = recordSummary(r.snapshot || {});
+        var d = new Date(r.savedAt);
+        var dateStr = d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()) +
+          ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+        var isCurrent = r.recordId === state.meta.recordId;
+        var card = el('div', { class: 'record-card' }, [
+          el('button', {
+            class: 'record-main', type: 'button',
+            onclick: function () { loadRecordIntoState(r.recordId); }
+          }, [
+            el('div', { class: 'record-top' }, [
+              el('span', { class: 'record-name' }, [s.name || '이름 미입력']),
+              isCurrent ? el('span', { class: 'record-badge' }, ['현재']) : null
+            ]),
+            el('div', { class: 'record-meta' }, [
+              dateStr + '  ·  주요구 ' + s.needsN + '  ·  제한활동 ' + s.limitedN
+            ])
+          ]),
+          el('button', {
+            class: 'record-del', type: 'button', 'aria-label': '삭제',
+            onclick: function () {
+              if (window.confirm('이 평가 기록을 삭제할까요? 되돌릴 수 없습니다.')) {
+                deleteRecord(r.recordId); render();
+              }
+            }
+          }, ['🗑'])
+        ]);
+        container.appendChild(card);
+      });
+    }
+
+    app.innerHTML = '';
+    app.appendChild(container);
+    renderActions([]); // 하단 탭바 사용
+  }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
   function copyrightBody() {
     var mail = el('a', { href: 'mailto:' + CONTACT_EMAIL }, [CONTACT_EMAIL]);
@@ -912,6 +1033,7 @@
    * 화면 3 : 솔루션 제안서 (양식지 3)
    * =======================================================*/
   function renderResult() {
+    upsertCurrentRecord(); // 결과에 도달하면 기록에 자동 저장/갱신
     var limited = collectLimitedActivities();
     var rec = computeControlRecommendation();
     var container = el('div', {}, []);
@@ -1367,6 +1489,7 @@
     else if (state.screen === 'performance') renderPerformance();
     else if (state.screen === 'result') renderResult();
     else if (state.screen === 'more') renderMore();
+    else if (state.screen === 'records') renderRecords();
     renderBottomNav();
   }
 
