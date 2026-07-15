@@ -1077,69 +1077,65 @@
 
   function renderFloorPlanCard(limited, rec) {
     var devMap = spaceDeviceMap(limited, rec);
-    // 공간 배치 (아이소메트릭 다이아몬드)
-    var layout = {
-      entrance: { gx: 0, gy: 0 }, living: { gx: 1, gy: 0 },
-      bedroom: { gx: 0, gy: 1 }, bathroom: { gx: 1, gy: 1 }
-    };
-    var HW = 120, HH = 64, DEP = 22, OX = 310, OY = 84;
+    // 위에서 내려다본 평면 설계도. 방 크기를 현실적으로(거실 큼, 현관·화장실 작음)
+    var rooms = [
+      { id: 'living', x: 12, y: 12, w: 356, h: 132, label: '거실 / 부엌' },
+      { id: 'bedroom', x: 12, y: 148, w: 196, h: 168, label: '침실' },
+      { id: 'bathroom', x: 212, y: 148, w: 156, h: 78, label: '화장실' },
+      { id: 'entrance', x: 212, y: 230, w: 156, h: 86, label: '현관' }
+    ];
+    var VW = 380, VH = 330, LH = 18;
     var svg = svgEl('svg', {
-      viewBox: '0 0 620 340', width: '100%',
+      viewBox: '0 0 ' + VW + ' ' + VH, width: '100%',
       preserveAspectRatio: 'xMidYMid meet', class: 'floorplan-svg'
     }, []);
 
-    // 뒤에서 앞으로 (cy 오름차순): 현관 → 침실/거실 → 화장실
-    var order = ['entrance', 'bedroom', 'living', 'bathroom'];
-    order.forEach(function (sid) {
-      var space = D.spaces.filter(function (s) { return s.id === sid; })[0];
-      var pos = layout[sid];
-      var cx = OX + (pos.gx - pos.gy) * 130;
-      var cy = OY + (pos.gx + pos.gy) * 70;
-      var devs = devMap[sid] || [];
+    rooms.forEach(function (room) {
+      var space = D.spaces.filter(function (s) { return s.id === room.id; })[0];
+      var devs = devMap[room.id] || [];
       var active = devs.length > 0;
 
-      var top = (cx) + ',' + (cy - HH), right = (cx + HW) + ',' + cy,
-        bot = cx + ',' + (cy + HH), left = (cx - HW) + ',' + cy;
-      var floorFill = active ? '#fceadd' : '#f1ece6';
-      var edge = active ? '#cb5a0f' : '#c9bcae';
-      // 좌/우 벽 (3D 깊이)
-      svg.appendChild(svgEl('polygon', {
-        points: (cx - HW) + ',' + cy + ' ' + cx + ',' + (cy + HH) + ' ' + cx + ',' + (cy + HH + DEP) + ' ' + (cx - HW) + ',' + (cy + DEP),
-        fill: active ? '#e2954f' : '#ddd2c6', stroke: edge, 'stroke-width': '1'
+      // 방 (벽)
+      svg.appendChild(svgEl('rect', {
+        x: room.x, y: room.y, width: room.w, height: room.h, rx: 3,
+        fill: active ? '#fdeede' : '#f3efe9',
+        stroke: active ? '#cb5a0f' : '#c3b8aa',
+        'stroke-width': active ? 2.5 : 1.5
       }));
-      svg.appendChild(svgEl('polygon', {
-        points: cx + ',' + (cy + HH) + ' ' + (cx + HW) + ',' + cy + ' ' + (cx + HW) + ',' + (cy + DEP) + ' ' + cx + ',' + (cy + HH + DEP),
-        fill: active ? '#c8721f' : '#cabeb0', stroke: edge, 'stroke-width': '1'
-      }));
-      // 바닥 면
-      svg.appendChild(svgEl('polygon', {
-        points: top + ' ' + right + ' ' + bot + ' ' + left,
-        fill: floorFill, stroke: edge, 'stroke-width': '1.5'
-      }));
-      // 공간 이름
+      // 방 이름
       svg.appendChild(svgEl('text', {
-        x: cx, y: cy - HH + 22, 'text-anchor': 'middle',
-        'font-size': '15', 'font-weight': '700', fill: active ? '#8a3b00' : '#a89a8c'
-      }, [space.label + (active ? '' : ' (해당 없음)')]));
-      // 기기 목록 (최대 4개 + 나머지)
-      var show = devs.slice(0, 4);
+        x: room.x + 12, y: room.y + 22, 'font-size': '15', 'font-weight': '700',
+        fill: active ? '#a5470b' : '#a29587'
+      }, [room.label + (active ? '' : ' · 해당 없음')]));
+
+      // 기기 목록 (방 높이에 맞춰 표시 개수 조절)
+      var maxLines = Math.max(1, Math.floor((room.h - 34) / LH));
+      var show = devs.length > maxLines ? devs.slice(0, maxLines - 1) : devs.slice(0, maxLines);
       show.forEach(function (dev, i) {
         svg.appendChild(svgEl('text', {
-          x: cx, y: cy - 8 + i * 15, 'text-anchor': 'middle',
-          'font-size': '11.5', fill: '#4a3520'
-        }, [deviceEmoji(dev) + ' ' + dev]));
+          x: room.x + 12, y: room.y + 44 + i * LH, 'font-size': '12.5', fill: '#3f2d1c'
+        }, [deviceEmoji(dev) + '  ' + dev]));
       });
-      if (devs.length > 4) {
+      if (devs.length > show.length) {
         svg.appendChild(svgEl('text', {
-          x: cx, y: cy - 8 + 4 * 15, 'text-anchor': 'middle',
-          'font-size': '11', fill: '#8a6b4a'
-        }, ['+' + (devs.length - 4) + '개 더']));
+          x: room.x + 12, y: room.y + 44 + show.length * LH, 'font-size': '11.5', fill: '#8a6b4a'
+        }, ['+' + (devs.length - show.length) + '개 더']));
       }
     });
 
+    // 현관 출입문 (스윙 아크) — 평면도 느낌
+    var e = rooms[3];
+    svg.appendChild(svgEl('path', {
+      d: 'M ' + (e.x + e.w) + ' ' + (e.y + e.h - 12) + ' A 34 34 0 0 1 ' + (e.x + e.w - 34) + ' ' + (e.y + e.h - 46),
+      fill: 'none', stroke: '#cb5a0f', 'stroke-width': '1.4', 'stroke-dasharray': '3 3'
+    }));
+    svg.appendChild(svgEl('rect', {
+      x: e.x + e.w - 4, y: e.y + e.h - 46, width: 8, height: 34, fill: '#fff'
+    }));
+
     var card = el('div', { class: 'card' }, [
-      el('h3', {}, ['스마트 홈 설계도 (공간별)']),
-      el('p', { class: 'section-guide' }, ['도출된 스마트 홈 솔루션을 공간별로 배치한 도식입니다. 각 방에 필요한 기기가 표시됩니다.']),
+      el('h3', {}, ['스마트 홈 설계도 (평면)']),
+      el('p', { class: 'section-guide' }, ['위에서 내려다본 집 평면도입니다. 도출된 스마트 홈 기기가 방마다 표시됩니다.']),
       el('div', { class: 'floorplan-wrap' }, [svg])
     ]);
     return card;

@@ -487,9 +487,9 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--primary-dark); }
 .stat .lbl { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
 
-/* 스마트 홈 설계도 */
-.floorplan-wrap { overflow-x: auto; margin-top: 6px; }
-.floorplan-svg { display: block; min-width: 320px; max-width: 620px; margin: 0 auto; }
+/* 스마트 홈 설계도 (평면) */
+.floorplan-wrap { margin-top: 8px; }
+.floorplan-svg { display: block; width: 100%; max-width: 440px; margin: 0 auto; }
 
 .solution-space { margin-bottom: 22px; }
 .solution-space > .sp-title {
