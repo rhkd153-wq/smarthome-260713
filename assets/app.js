@@ -25,7 +25,7 @@
       screen: 'splash',
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '',
-              reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '' },
+              reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '', resultTab: 'summary' },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
@@ -1170,7 +1170,39 @@
     ]);
     container.appendChild(headCard);
 
-    /* --- 대상자의 주요구 (주요구 확인 단계 결과) --- */
+    /* --- 결과 하위 탭 (한 화면이 너무 길지 않게 분할) --- */
+    var activeTab = state.meta.resultTab || 'summary';
+    var RTABS = [
+      { id: 'summary', label: '📋 요약' },
+      { id: 'plan', label: '🏠 설계도·솔루션' },
+      { id: 'buy', label: '🛒 기기·구매' },
+      { id: 'care', label: '📝 계획' }
+    ];
+    container.appendChild(el('div', { class: 'result-tabbar no-print' }, RTABS.map(function (t) {
+      return el('button', {
+        class: 'rtab-btn' + (t.id === activeTab ? ' active' : ''), type: 'button',
+        onclick: function () { state.meta.resultTab = t.id; render(); }
+      }, [t.label]);
+    })));
+    function sec(tabId, node) {
+      if (!node) return;
+      node.className = (node.className ? node.className + ' ' : '') +
+        'rsec rsec-' + tabId + (tabId === activeTab ? '' : ' rsec-hidden');
+      container.appendChild(node);
+    }
+
+    /* [요약] 완료 축하 배너 */
+    if (limited.length > 0) {
+      sec('summary', el('div', { class: 'card celebrate' }, [
+        el('div', { class: 'celebrate-emoji' }, ['🎉']),
+        el('div', {}, [
+          el('div', { class: 'celebrate-title' }, ['평가 완료!']),
+          el('div', { class: 'celebrate-sub' }, ['제한 활동 ' + limited.length + '개에 맞는 스마트 홈 솔루션을 찾았어요. 위 탭에서 상세 내용을 확인하세요.'])
+        ])
+      ]));
+    }
+
+    /* [요약] 대상자의 주요구 */
     var goals = confirmedNeeds();
     if (goals.length > 0 || m.needsExtra) {
       var goalsCard = el('div', { class: 'card' }, [el('h3', {}, ['대상자의 주요구'])]);
@@ -1188,13 +1220,13 @@
           el('strong', {}, ['기타: ']), m.needsExtra
         ]));
       }
-      container.appendChild(goalsCard);
+      sec('summary', goalsCard);
     }
 
-    /* --- 대상자 정보 요약표 (기초 스크리닝 반영) --- */
-    container.appendChild(renderProfileCard());
+    /* [요약] 대상자 정보 */
+    sec('summary', renderProfileCard());
 
-    /* --- 권장 제어 인터페이스 (개인·환경 필터) --- */
+    /* [요약] 권장 제어 인터페이스 */
     var recCard = el('div', { class: 'card' }, [el('h3', {}, ['권장 제어 인터페이스'])]);
     if (rec.primary) {
       recCard.appendChild(el('div', { class: 'rec-primary' }, [rec.primary]));
@@ -1213,19 +1245,16 @@
         '아래 목록에서 Wi-Fi 옵션은 "구축 필요"로 표시됩니다.'
       ]));
     }
-    container.appendChild(recCard);
+    sec('summary', recCard);
 
-    /* --- 권장 플랫폼 및 기존 가전 활용 --- */
-    container.appendChild(renderPlatformCard());
-
-    /* --- 요약 통계 --- */
+    /* [요약] 통계 */
     var wifiCount = 0, bleCount = 0;
     limited.forEach(function (r) {
       r.activity.tech.forEach(function (t) {
         if (t.network === 'Wi-Fi') wifiCount++; else if (t.network === 'BLE') bleCount++;
       });
     });
-    container.appendChild(el('div', { class: 'card' }, [
+    sec('summary', el('div', { class: 'card' }, [
       el('div', { class: 'result-summary' }, [
         stat(limited.length, '제한 활동'),
         stat(countSolutionSpaces(limited), '대상 공간'),
@@ -1234,10 +1263,10 @@
       ])
     ]));
 
-    /* --- 스마트 홈 설계도 (공간별 도식) --- */
-    if (limited.length > 0) container.appendChild(renderFloorPlanCard(limited, rec));
+    /* [설계도] 스마트 홈 설계도 (평면) */
+    if (limited.length > 0) sec('plan', renderFloorPlanCard(limited, rec));
 
-    /* --- 솔루션 본문 (공간별) — 제한 활동(좌) → 솔루션(우) --- */
+    /* [설계도] 솔루션 본문 (공간별) — 제한 활동(좌) → 솔루션(우) */
     var body = el('div', { class: 'card' }, [el('h3', {}, ['공간별 적정 스마트 홈 기술'])]);
     if (limited.length === 0) {
       body.appendChild(el('div', { class: 'empty-state' }, [
@@ -1258,19 +1287,19 @@
         body.appendChild(block);
       });
     }
-    container.appendChild(body);
+    sec('plan', body);
 
-    /* --- 키트 구성 + 통합 기기 목록 --- */
-    if (limited.length > 0) container.appendChild(renderKitCard(limited, rec));
+    /* [기기·구매] 키트 구성 */
+    if (limited.length > 0) sec('buy', renderKitCard(limited, rec));
+    /* [기기·구매] 권장 플랫폼 및 기존 가전 활용 */
+    if (limited.length > 0) sec('buy', renderPlatformCard());
+    /* [기기·구매] 연결 구조 및 구매 안내 */
+    if (limited.length > 0) sec('buy', renderConnectivityCard(limited, rec));
 
-    /* --- 연결 구조 및 구매 안내 --- */
-    if (limited.length > 0) container.appendChild(renderConnectivityCard(limited, rec));
-
-    /* --- 중재 계획 및 유의사항 (처리 과정 반영) --- */
-    container.appendChild(renderInterventionCard());
-
-    /* --- 제작 크레딧 (인쇄 시에도 표기) --- */
-    container.appendChild(el('div', { class: 'report-source' }, [MAKER_CREDIT]));
+    /* [계획] 중재 계획 및 유의사항 */
+    sec('care', renderInterventionCard());
+    /* [계획] 제작 크레딧 */
+    sec('care', el('div', { class: 'report-source' }, [MAKER_CREDIT]));
 
     app.innerHTML = '';
     app.appendChild(container);
