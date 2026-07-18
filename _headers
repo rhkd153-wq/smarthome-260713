@@ -1,0 +1,7 @@
+# Cloudflare Pages / Netlify 공통 헤더 설정
+# 파일명이 고정(?v= 쿼리로 갱신)이므로 매번 재검증하여 업데이트가 즉시 반영되게 함
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=0, must-revalidate
