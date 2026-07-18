@@ -221,16 +221,61 @@
     return node;
   }
 
-  /* ---------- 진행바 ---------- */
+  /* ---------- 진행바 (완료 단계 스탬프) ---------- */
   function renderStepbar() {
     stepbar.innerHTML = '';
     var currentIdx = STEPS.map(function (s) { return s.id; }).indexOf(state.screen);
     if (currentIdx === -1) { stepbar.style.display = 'none'; return; } // splash/more
     stepbar.style.display = '';
     STEPS.forEach(function (s, i) {
-      var cls = 'step' + (i === currentIdx ? ' active' : '') + (i < currentIdx ? ' done' : '');
-      stepbar.appendChild(el('div', { class: cls }, [(i + 1) + '. ' + s.label]));
+      var done = i < currentIdx;
+      var cls = 'step' + (i === currentIdx ? ' active' : '') + (done ? ' done' : '');
+      stepbar.appendChild(el('div', { class: cls }, [(done ? '⭐ ' : (i + 1) + '. ') + s.label]));
     });
+  }
+
+  /* ---------- 게임 요소: 성장하는 집 + 캐릭터 가이드(홈이) ---------- */
+  var STEP_LEVEL = { intro: 0, screening: 1, needs: 2, performance: 3, result: 4 };
+  var GUIDE_MSG = {
+    intro: '안녕하세요! 저는 홈이예요. 딱 맞는 스마트 홈을 함께 찾아봐요 🙌',
+    screening: '먼저 지금 집에서 어떻게 지내는지 알려주세요.',
+    needs: '무엇을 스마트 홈으로 스스로 하고 싶은지 골라볼까요?',
+    performance: '공간별로 조금만 더 자세히 확인해요!',
+    result: '완성! 딱 맞는 솔루션을 찾았어요 🎉'
+  };
+
+  function buildHouseSvg(level) {
+    var O = '#cb5a0f', Od = '#a5470b';
+    var s = svgEl('svg', { viewBox: '0 0 130 112', width: '92', height: '80', class: 'house-svg' }, []);
+    s.appendChild(svgEl('line', { x1: 6, y1: 98, x2: 124, y2: 98, stroke: '#cbb99f', 'stroke-width': 3, 'stroke-linecap': 'round' }));
+    s.appendChild(svgEl('rect', { x: 26, y: 90, width: 78, height: 8, rx: 2, fill: '#dccdb9' }));
+    if (level >= 1) s.appendChild(svgEl('rect', { x: 34, y: 52, width: 62, height: 38, fill: '#fff', stroke: O, 'stroke-width': 2.5, class: 'hpart' }));
+    if (level >= 2) s.appendChild(svgEl('polygon', { points: '28,54 65,26 102,54', fill: O, class: 'hpart' }));
+    if (level >= 3) {
+      s.appendChild(svgEl('rect', { x: 57, y: 66, width: 16, height: 24, rx: 2, fill: level >= 4 ? '#f6b23a' : Od, class: 'hpart' }));
+      s.appendChild(svgEl('rect', { x: 40, y: 60, width: 13, height: 13, rx: 2, fill: level >= 4 ? '#ffe08a' : '#e8dfd1', stroke: Od, 'stroke-width': 1, class: 'hpart' }));
+    }
+    if (level >= 4) {
+      var g = svgEl('g', { fill: 'none', stroke: O, 'stroke-linecap': 'round', 'stroke-width': 3, class: 'hpart' }, []);
+      g.appendChild(svgEl('path', { d: 'M52 22 a18 18 0 0 1 26 0', opacity: '0.5' }));
+      g.appendChild(svgEl('path', { d: 'M57 27 a11 11 0 0 1 16 0', opacity: '0.85' }));
+      s.appendChild(g);
+      s.appendChild(svgEl('circle', { cx: 65, cy: 32, r: 3, fill: O, class: 'hpart' }));
+    }
+    return s;
+  }
+
+  function renderProgressHero(screen) {
+    var level = STEP_LEVEL[screen] || 0;
+    return el('div', { class: 'card progress-hero' }, [
+      buildHouseSvg(level),
+      el('div', { class: 'ph-msg' }, [
+        el('div', { class: 'ph-mascot' }, ['🤖']),
+        el('div', { class: 'ph-bubble' }, [
+          el('b', {}, ['홈이']), ' · ', GUIDE_MSG[screen] || ''
+        ])
+      ])
+    ]);
   }
 
   /* ---------- 하단 탭바 (홈 / 설정) ---------- */
@@ -660,6 +705,7 @@
    * =======================================================*/
   function renderScreening() {
     var container = el('div', {}, []);
+    container.appendChild(renderProgressHero('screening'));
     container.appendChild(el('div', {}, [
       el('h1', { class: 'page-title' }, ['1. 기초 스크리닝']),
       el('p', { class: 'page-sub' }, ['가장 먼저 현재 활동 수준을 확인한 뒤, 개인 능력과 환경을 파악합니다.'])
@@ -728,6 +774,7 @@
   function renderNeeds() {
     var pending = pendingNeedItems();
     var container = el('div', {}, [
+      renderProgressHero('needs'),
       el('h1', { class: 'page-title' }, ['주요구 확인']),
       el('p', { class: 'page-sub' }, ['기초 스크리닝에서 스스로 수행이 어려운 것으로 확인된 활동입니다. 각 항목을 대상자와 함께 확인하여, 스마트 홈으로 개선할지 선택하세요. "예"로 선택한 항목이 대상자의 주요구가 됩니다.'])
     ]);
@@ -862,6 +909,7 @@
       ? '앞서 확인한 주요구를 바탕으로, 각 공간에서 실제로 어떻게 수행하고 있는지 조금 더 자세히 확인합니다. 이 수행 정도에 따라 공간별로 맞춤 스마트 홈 기술을 추천합니다.'
       : '각 공간에서 현재 수행 정도를 확인합니다. 이 결과에 따라 공간별로 맞춤 스마트 홈 기술을 추천합니다.';
     var container = el('div', {}, [
+      renderProgressHero('performance'),
       el('h1', { class: 'page-title' }, ['2. 공간별 작업수행도']),
       el('p', { class: 'page-sub' }, [subText])
     ]);
@@ -1194,9 +1242,9 @@
     /* [요약] 완료 축하 배너 */
     if (limited.length > 0) {
       sec('summary', el('div', { class: 'card celebrate' }, [
-        el('div', { class: 'celebrate-emoji' }, ['🎉']),
+        buildHouseSvg(4),
         el('div', {}, [
-          el('div', { class: 'celebrate-title' }, ['평가 완료!']),
+          el('div', { class: 'celebrate-title' }, ['🎉 완성! 평가 완료']),
           el('div', { class: 'celebrate-sub' }, ['제한 활동 ' + limited.length + '개에 맞는 스마트 홈 솔루션을 찾았어요. 위 탭에서 상세 내용을 확인하세요.'])
         ])
       ]));
@@ -1743,6 +1791,12 @@
     else if (state.screen === 'more') renderMore();
     else if (state.screen === 'records') renderRecords();
     renderBottomNav();
+    // 화면 전환 페이드 애니메이션 (D)
+    if (state.screen !== 'splash') {
+      app.classList.remove('anim-in');
+      void app.offsetWidth; // 리플로우로 애니메이션 재시작
+      app.classList.add('anim-in');
+    }
   }
 
   // 시작 시 저장된 평가 복원 (있으면 데이터 유지, 화면은 항상 스플래시부터)

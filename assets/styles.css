@@ -460,6 +460,37 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .settings-foot-name { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
 .settings-foot-ver { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
 
+/* ---------- 게임 요소: 성장하는 집 + 홈이 ---------- */
+.progress-hero {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(120deg, #fff6ec, #ffeede);
+  border: 1px solid var(--line);
+}
+.house-svg { flex: 0 0 auto; }
+.house-svg .hpart { animation: pop 0.4s ease; transform-origin: center; }
+.ph-msg { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ph-mascot { font-size: 1.8rem; flex: 0 0 auto; animation: bob 2.4s ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.ph-bubble {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.ph-bubble b { color: var(--primary-dark); }
+.ph-bubble::before {
+  content: ''; position: absolute; left: -7px; top: 16px;
+  border: 6px solid transparent; border-right-color: #fff;
+}
+
+/* 화면 전환 페이드 (D) */
+.anim-in { animation: fadeInUp 0.28s ease; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
 /* ---------- 인트로 ---------- */
 .hero { text-align: center; padding: 20px 0 8px; }
 .hero .icon { font-size: 3rem; }
