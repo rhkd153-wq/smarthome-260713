@@ -1,0 +1,7 @@
+# Cloudflare Workers - 정적 파일(Static Assets) 서빙 설정
+# 별도 코드 없이 저장소 루트의 정적 사이트를 그대로 배포합니다.
+name = "smarthome-260713"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./"
