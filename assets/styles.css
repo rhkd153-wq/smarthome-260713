@@ -969,3 +969,88 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 @media (max-width: 560px) {
   .matrix-row .row-label { flex-basis: 100%; }
 }
+
+/* =========================================================
+ * 작업수행 분석 · 로우테크 환경수정 · 수행기술 칩
+ * =======================================================*/
+.sol-wrap { margin-bottom: 12px; }
+.sol-wrap .sol-item { margin-bottom: 0; }
+.sol-sub {
+  font-size: 0.72rem; font-weight: 800; color: var(--primary-dark);
+  letter-spacing: 0.02em; margin: 8px 0 2px;
+}
+.sol-sub:first-child { margin-top: 0; }
+
+.skill-chip {
+  display: inline-block; font-size: 0.74rem; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; margin: 2px 4px 2px 0;
+  background: #eef2f6; color: #4a5568; border: 1px solid transparent;
+}
+.skill-chip.mini { font-size: 0.7rem; padding: 1px 7px; }
+.skill-chip.blocked {
+  background: #fdecec; color: var(--danger); border-color: #f3c0c0; font-weight: 700;
+}
+
+/* 로우테크 항목 */
+.lowtech-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.lowtech-item {
+  border: 1px solid var(--line); border-left: 3px solid #3a9d6b;
+  border-radius: 8px; padding: 8px 10px; background: #f7fcf9;
+}
+.lt-name { font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lt-tag {
+  font-size: 0.64rem; font-weight: 800; color: #2f7d55;
+  background: #dff2e7; padding: 1px 7px; border-radius: 999px;
+}
+.lt-flag {
+  font-size: 0.64rem; font-weight: 800; color: #fff;
+  background: var(--primary); padding: 1px 7px; border-radius: 999px;
+}
+.lt-why { font-size: 0.82rem; color: var(--muted); margin: 3px 0 5px; }
+.lt-supports { display: flex; flex-wrap: wrap; }
+
+/* 공간별 로우테크 카드 */
+.lt-space { margin-bottom: 10px; }
+.lt-space > .sp-title {
+  font-size: 1.02rem; font-weight: 700; color: var(--primary-dark);
+  border-left: 4px solid var(--primary); padding-left: 10px; margin: 14px 0 8px;
+}
+.lowtech-item.lt-hit { border-left-color: var(--primary); background: #fff8f2; }
+
+/* 작업수행 분석 블록 */
+.analysis-block {
+  border: 1px solid var(--line); border-top: none;
+  border-radius: 0 0 10px 10px; padding: 12px 14px; margin-top: -2px;
+  background: #f8fafc;
+}
+.an-head { font-size: 0.8rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 8px; }
+.an-steps { display: flex; flex-direction: column; gap: 4px; }
+.an-step {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 5px 8px; border-radius: 7px;
+}
+.an-step.has-block { background: #fef6f6; }
+.an-step-no {
+  flex: 0 0 auto; width: 18px; height: 18px; line-height: 18px; text-align: center;
+  background: var(--primary); color: #fff; border-radius: 50%;
+  font-size: 0.68rem; font-weight: 800;
+}
+.an-step-label { font-size: 0.86rem; font-weight: 600; }
+.an-step-skills { display: flex; flex-wrap: wrap; margin-left: auto; }
+.an-blocked {
+  margin-top: 8px; font-size: 0.84rem; padding: 8px 10px;
+  background: #fdecec; border-radius: 8px; color: #7a2020;
+}
+.an-blocked .an-tail { color: #a05656; font-weight: 400; }
+.an-note { margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
+@media (max-width: 560px) {
+  .an-step-skills { margin-left: 0; width: 100%; }
+}
+
+/* OTPF 근거 표 */
+.ref-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ref-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 480px; }
+.ref-table th, .ref-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.ref-table th { background: #f1f5f9; font-weight: 700; color: var(--primary-dark); }
+.ref-table td.ineff { color: var(--danger); }
+.ref-bf { margin-top: 10px; font-size: 0.82rem; color: var(--muted); line-height: 1.6; }

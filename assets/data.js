@@ -233,6 +233,11 @@ window.SHData = (function () {
             {
               id: 'security', label: '보안 시스템 활성화',
               tech: [{ network: 'Wi-Fi', devices: ['스마트 카메라', '문 센서'] }]
+            },
+            {
+              id: 'shoes', label: '신발 신기 · 벗기',
+              // 로우테크 환경수정이 주 솔루션인 활동(스마트 홈 기기 없음)
+              tech: []
             }
           ]
         },
@@ -604,7 +609,175 @@ window.SHData = (function () {
     ]
   };
 
+  /* =========================================================
+   * 작업수행 분석 (Occupational Performance Analysis)
+   *  근거: OTPF-4 (AOTA, 2020)
+   *   - Table 7 수행기술(Performance Skills): 효과적/비효과적 수행
+   *   - Table 9 클라이언트 요인(Client Factors) 중 신체기능(Body Functions)
+   *
+   *  핵심 원리(OTPF-4): "수행기술을 비효과적으로 사용하는 대상자라도,
+   *  작업적·환경적 적응(adaptation)을 사용하면 전체 작업을 성공적으로
+   *  수행할 수 있다." → 우리 솔루션(스마트 홈 + 로우테크)은 바로 이
+   *  '환경적 적응'으로, 막힌 수행기술을 제거하거나 대체한다.
+   * =======================================================*/
+  var otpfPrinciple =
+    '작업수행 분석은 활동을 정상 수행 단계로 나누고, 각 단계에 필요한 수행기술·신체기능을 확인한 뒤, ' +
+    '대상자의 손상으로 인해 어느 단계가 막히는지를 찾습니다. 그 막힌 수행기술을 스마트 홈 기기(동작 제거·인터페이스 대체) 또는 ' +
+    '로우테크 환경수정(물리적 보완)으로 없애거나 대체하여 대상자가 스스로 작업을 완수하도록 돕습니다. ' +
+    '근거: OTPF-4 (미국작업치료협회, 2020) — 수행기술(Table 7)·신체기능(Table 9).';
+
+  // 우리 앱에서 쓰는 수행기술 어휘(한글) — OTPF-4 운동 수행기술 기반
+  var performanceSkillRef = [
+    { name: '뻗기', desc: '팔을 뻗어 멀리 있는 물건을 잡거나 스위치에 닿기', effective: '힘들이지 않고 자연스럽게 팔을 뻗음', ineffective: '과도한 노력으로 뻗거나 닿지 못함' },
+    { name: '굽히기', desc: '앉거나 낮은 곳의 물건을 잡기 위해 몸통을 굽히기', effective: '무리 없이 굽혀 물건에 닿음', ineffective: '뻣뻣하거나 굽히지 못해 닿지 못함' },
+    { name: '쥐기·집기', desc: '물건이 미끄러지지 않게 쥐거나 손끝으로 집기', effective: '물건이 손에서 미끄러지지 않음', ineffective: '쥐지 못해 물건이 미끄러지거나 떨어짐' },
+    { name: '쥐고 돌리기', desc: '손잡이·다이얼을 쥐고 손목을 돌리기', effective: '손목을 돌려 손잡이를 조작함', ineffective: '손목 회전이 어려워 손잡이를 돌리지 못함' },
+    { name: '조작하기', desc: '손가락으로 버튼·작은 물건을 정교하게 다루기', effective: '더듬지 않고 버튼·부품을 다룸', ineffective: '더듬거나 헛눌러 정확히 조작하지 못함' },
+    { name: '협응하기', desc: '두 손·팔을 함께 사용해 물건을 다루기', effective: '양손을 함께 안정적으로 사용함', ineffective: '양손 협응이 안 되어 물건을 놓침' },
+    { name: '밀기·당기기', desc: '문·서랍·커튼을 밀거나 당기기', effective: '적은 힘으로 부드럽게 밀고 당김', ineffective: '과도한 힘이 들거나 밀고 당기지 못함' },
+    { name: '들어올리기', desc: '물건을 들어 올리기', effective: '무리 없이 들어 올림', ineffective: '가벼운 물건도 들어 올리기 어려움' },
+    { name: '걷기', desc: '실내 바닥을 안정적으로 이동하기', effective: '끌지 않고 안정적으로 걸음', ineffective: '불안정하거나 지지 없이는 걷지 못함' },
+    { name: '옮기기·이동', desc: '물건을 들고, 또는 휠체어로 자리 옮기기', effective: '안정적으로 옮김', ineffective: '옮기는 동안 불안정함' },
+    { name: '힘 조절', desc: '알맞은 힘·속도로 물건을 다루기', effective: '적절한 힘으로 조작함', ineffective: '힘이 너무 세거나 약함' },
+    { name: '부드러운 움직임', desc: '팔·손목을 부드럽게 움직이기', effective: '부드럽고 유연하게 움직임', ineffective: '뻣뻣하고 끊기게 움직임' },
+    { name: '자세 유지', desc: '작업 중 균형을 잃지 않고 자세 잡기', effective: '기대거나 짚지 않고 자세를 유지함', ineffective: '계속 기대거나 균형을 잃음' },
+    { name: '지구력', desc: '쉬지 않고 작업을 끝까지 지속하기', effective: '피로 없이 작업을 마침', ineffective: '중간에 쉬거나 숨차서 멈춤' },
+    { name: '말하기·의사소통', desc: '음성으로 요구·의사를 전달하기', effective: '명료하게 말해 의사를 전달함', ineffective: '발음이 부정확해 음성 인식·전달이 어려움' }
+  ];
+
+  // 신체기능(OTPF-4 Table 9 · 신경근골격 및 운동 관련 기능 중심)
+  var bodyFunctionRef = [
+    { name: '관절가동범위', desc: '관절을 움직일 수 있는 범위 (손목·어깨·고관절 등)' },
+    { name: '근력', desc: '움직임을 만들어내는 힘' },
+    { name: '근긴장', desc: '근육의 긴장도 (경직·이완·변동)' },
+    { name: '근지구력', desc: '근육 수축을 지속하는 능력' },
+    { name: '정밀 운동 조절', desc: '손가락의 소근육 협응 (버튼·작은 물건)' },
+    { name: '보행 패턴', desc: '걷기와 이동의 안정성' },
+    { name: '균형·자세 반응', desc: '넘어지지 않도록 자세를 잡는 반응' },
+    { name: '음성·조음 기능', desc: '말소리를 명료하게 산출하는 기능' }
+  ];
+
+  /* 개인 능력(personal) → 막히기 쉬운 수행기술 추론 규칙(자동, 평가자 보정 가능)
+   *  값: state.personal 의 각 필드 값 → 막힌 수행기술(한글) 배열 */
+  var blockedSkillRules = {
+    handUse: {
+      fixed:  ['쥐고 돌리기', '조작하기', '협응하기', '힘 조절'],
+      unable: ['쥐기·집기', '쥐고 돌리기', '조작하기', '협응하기', '밀기·당기기', '들어올리기', '힘 조절', '부드러운 움직임']
+    },
+    indoorMobility: {
+      assisted: ['걷기', '자세 유지'],
+      unable:   ['걷기', '옮기기·이동', '자세 유지', '뻗기']
+    },
+    communication: {
+      unclear: ['말하기·의사소통'],
+      unable:  ['말하기·의사소통']
+    }
+  };
+
+  /* 활동별 정상 수행 단계 분해(활동 id 기준, 공간 공통 재사용)
+   *  각 step: { label, skills:[수행기술 한글] } */
+  var activityAnalysis = {
+    shoes: { title: '신발 신기 · 벗기', steps: [
+      { label: '현관에서 앉을 자리 잡기', skills: ['자세 유지', '걷기'] },
+      { label: '허리를 굽혀 발쪽으로 손 뻗기', skills: ['굽히기', '뻗기'] },
+      { label: '신발을 쥐고 발에 신기기', skills: ['쥐기·집기', '밀기·당기기'] }
+    ]},
+    unlock: { title: '잠금장치 해제', steps: [
+      { label: '도어락 앞으로 이동', skills: ['걷기', '옮기기·이동'] },
+      { label: '버튼 누르거나 열쇠 조작', skills: ['조작하기', '쥐기·집기'] }
+    ]},
+    door: { title: '현관문 열기 · 닫기', steps: [
+      { label: '손잡이를 쥐고 돌리기', skills: ['쥐고 돌리기', '쥐기·집기'] },
+      { label: '문을 밀거나 당기기', skills: ['밀기·당기기', '힘 조절'] },
+      { label: '문턱을 넘어 드나들기', skills: ['걷기', '자세 유지'] }
+    ]},
+    security: { title: '보안 시스템 활성화', steps: [
+      { label: '제어판·기기까지 이동', skills: ['걷기'] },
+      { label: '버튼·스위치 조작', skills: ['조작하기', '뻗기'] }
+    ]},
+    bell: { title: '초인종 확인 · 응답', steps: [
+      { label: '초인종을 듣고 현관으로 이동', skills: ['걷기'] },
+      { label: '화면 확인·응답 버튼 조작', skills: ['조작하기', '뻗기'] }
+    ]},
+    lightswitch: { title: '조명 스위치 켜기 · 끄기', steps: [
+      { label: '스위치까지 이동', skills: ['걷기'] },
+      { label: '벽 스위치에 손 뻗기', skills: ['뻗기'] },
+      { label: '스위치 누르기', skills: ['쥐기·집기', '힘 조절'] }
+    ]},
+    moodlight: { title: '부드러운 조명 켜기 · 끄기', steps: [
+      { label: '조명·리모컨에 손 뻗기', skills: ['뻗기'] },
+      { label: '버튼 조작', skills: ['조작하기'] }
+    ]},
+    curtain: { title: '커튼 / 블라인드 여닫기', steps: [
+      { label: '창가로 이동', skills: ['걷기'] },
+      { label: '커튼 줄·천을 쥐고 당기기', skills: ['쥐기·집기', '밀기·당기기', '들어올리기'] }
+    ]},
+    poweroff: { title: '전자기기 전원 제어', steps: [
+      { label: '각 기기·콘센트까지 이동', skills: ['걷기', '옮기기·이동'] },
+      { label: '스위치·플러그 조작', skills: ['쥐기·집기', '조작하기'] }
+    ]},
+    tvac: { title: 'TV / 에어컨 제어', steps: [
+      { label: '리모컨을 찾아 쥐기', skills: ['쥐기·집기'] },
+      { label: '작은 버튼을 정확히 누르기', skills: ['조작하기', '힘 조절'] }
+    ]},
+    heating: { title: '난방 켜기 · 끄기', steps: [
+      { label: '보일러 조절기까지 이동', skills: ['걷기'] },
+      { label: '버튼·다이얼 조작', skills: ['조작하기', '쥐고 돌리기'] }
+    ]},
+    bed: { title: '전동침대 체위 변경', steps: [
+      { label: '리모컨을 쥐기', skills: ['쥐기·집기'] },
+      { label: '버튼 누르기', skills: ['조작하기'] }
+    ]},
+    fan: { title: '환풍기 켜기 · 끄기', steps: [
+      { label: '환풍기 스위치까지 이동', skills: ['걷기'] },
+      { label: '높은 곳 스위치에 손 뻗기', skills: ['뻗기'] },
+      { label: '스위치 누르기', skills: ['쥐기·집기'] }
+    ]}
+  };
+
+  /* =========================================================
+   * 로우테크 환경수정 카탈로그 (현장 추천 항목)
+   *  각 항목: { id, name, spaces:[공간 id | '전체'], why, supports:[수행기술] }
+   *  supports = 이 항목이 보완·대체해 주는 막힌 수행기술
+   * =======================================================*/
+  var lowtechCatalog = [
+    { id: 'fold-chair', name: '현관 접이식 의자(벤치)', spaces: ['entrance'],
+      why: '앉아서 신발을 신어 균형을 잃지 않게 합니다.', supports: ['자세 유지', '굽히기'] },
+    { id: 'long-shoehorn', name: '긴 구둣주걱', spaces: ['entrance'],
+      why: '허리를 깊이 굽히지 않고 신발을 신을 수 있습니다.', supports: ['굽히기', '뻗기'] },
+    { id: 'threshold-ramp', name: '문턱 경사판(미니 램프)', spaces: ['entrance', 'bathroom', 'living'],
+      why: '문턱 단차를 없애 휠체어·보행기·지팡이 이동을 안전하게 합니다.', supports: ['걷기', '옮기기·이동', '자세 유지'] },
+    { id: 'lever-handle', name: '레버형 문손잡이', spaces: ['entrance', 'bathroom', 'bedroom', 'living'],
+      why: '돌리는 손잡이를 아래로 누르는 레버로 바꿔 손목 회전 부담을 없앱니다.', supports: ['쥐고 돌리기', '쥐기·집기'] },
+    { id: 'reacher', name: '리처(집게형 도구)', spaces: ['전체'],
+      why: '떨어진 물건이나 높은 곳의 물건을 무리 없이 잡습니다.', supports: ['뻗기', '쥐기·집기', '들어올리기'] },
+    { id: 'grab-bar', name: '안전 손잡이(그랩바)', spaces: ['bathroom', 'entrance'],
+      why: '일어서기·앉기·이동 시 몸을 지지해 낙상을 예방합니다.', supports: ['자세 유지', '걷기'] },
+    { id: 'nonslip-mat', name: '미끄럼 방지 매트', spaces: ['bathroom'],
+      why: '물기로 미끄러지는 것을 막아 안전하게 이동·기립하게 합니다.', supports: ['걷기', '자세 유지'] },
+    { id: 'shower-chair', name: '목욕의자(샤워체어)', spaces: ['bathroom'],
+      why: '앉아서 씻어 서 있는 부담과 피로를 줄입니다.', supports: ['자세 유지', '지구력'] },
+    { id: 'big-rocker-switch', name: '큰 로커형 스위치판', spaces: ['전체'],
+      why: '손끝 대신 손등·팔로도 누를 수 있는 넓은 스위치로 조작을 쉽게 합니다.', supports: ['쥐기·집기', '조작하기', '힘 조절'] },
+    { id: 'big-remote', name: '대형 버튼 리모컨 · 버튼 키가드', spaces: ['living', 'bedroom'],
+      why: '버튼이 크고 오작동을 줄여 정확히 누를 수 있습니다.', supports: ['조작하기', '쥐기·집기'] },
+    { id: 'lower-switch', name: '스위치·콘센트 높이 조정(하향 이설)', spaces: ['전체'],
+      why: '앉은 자세·휠체어에서 손이 닿는 높이로 조정합니다.', supports: ['뻗기'] },
+    { id: 'nightlight', name: '콘센트형 자동 야간등', spaces: ['bedroom', 'entrance'],
+      why: '어두운 밤 스위치를 찾지 않아도 발밑을 밝혀 야간 이동을 안전하게 합니다.', supports: ['걷기'] },
+    { id: 'bed-rail', name: '침대 난간 · 기립 보조 손잡이', spaces: ['bedroom'],
+      why: '일어나기·돌아눕기 때 잡고 지지할 수 있습니다.', supports: ['자세 유지', '밀기·당기기'] },
+    { id: 'curtain-wand', name: '커튼 조작봉 · 고리형 손잡이', spaces: ['living', 'bedroom'],
+      why: '줄을 세게 당기지 않고 봉으로 밀어 커튼을 여닫습니다.', supports: ['밀기·당기기', '쥐기·집기'] }
+  ];
+
   return {
+    otpfPrinciple: otpfPrinciple,
+    performanceSkillRef: performanceSkillRef,
+    bodyFunctionRef: bodyFunctionRef,
+    blockedSkillRules: blockedSkillRules,
+    activityAnalysis: activityAnalysis,
+    lowtechCatalog: lowtechCatalog,
     currentActivityLevel: currentActivityLevel,
     personalAbility: personalAbility,
     environment: environment,

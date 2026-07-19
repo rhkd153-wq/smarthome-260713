@@ -1836,6 +1836,9 @@
     }
     sec('plan', body);
 
+    /* [설계도] 공간별 로우테크 환경수정 */
+    if (limited.length > 0) sec('plan', renderLowtechCard(limited));
+
     /* [기기·구매] 키트 구성 */
     if (limited.length > 0) sec('buy', renderKitCard(limited, rec));
     /* [기기·구매] 권장 플랫폼 및 기존 가전 활용 */
@@ -1845,6 +1848,8 @@
 
     /* [계획] 사용자 교육 체크리스트 */
     if (limited.length > 0) sec('care', renderEducationCard(rec, limited));
+    /* [계획] 작업수행 분석 근거 (OTPF-4) */
+    if (limited.length > 0) sec('care', renderSkillRefCard());
     /* [계획] 중재 계획 및 유의사항 */
     sec('care', renderInterventionCard());
     /* [계획] 제작 크레딧 */
@@ -1962,7 +1967,84 @@
     ]);
   }
 
+  /* =========================================================
+   * 작업수행 분석 — 막힌 수행기술 추론 · 로우테크 매칭
+   * =======================================================*/
+  // 개인 능력(손 기능·실내 보행·의사소통) → 막히기 쉬운 수행기술(map: 기술→true)
+  function inferBlockedSkills() {
+    var p = state.personal || {};
+    var rules = D.blockedSkillRules, set = {};
+    ['handUse', 'indoorMobility', 'communication'].forEach(function (field) {
+      var m = rules[field] && rules[field][p[field]];
+      if (m) m.forEach(function (s) { set[s] = true; });
+    });
+    return set;
+  }
+
+  // 활동에 필요한 전체 수행기술(map)
+  function activityNeededSkills(actId) {
+    var an = D.activityAnalysis[actId], need = {};
+    if (an) an.steps.forEach(function (st) { st.skills.forEach(function (s) { need[s] = true; }); });
+    return need;
+  }
+
+  // 이 활동에 맞는 로우테크 항목(공간 + 막힌/필요 기술 교집합)
+  function lowtechForActivity(r, blocked) {
+    var need = activityNeededSkills(r.activity.id);
+    var blockedList = Object.keys(need).filter(function (s) { return blocked[s]; });
+    var target = blockedList.length ? blockedList : Object.keys(need);
+    var spaceId = r.space.id;
+    return D.lowtechCatalog.filter(function (it) {
+      var inSpace = it.spaces.indexOf('전체') > -1 || it.spaces.indexOf(spaceId) > -1;
+      if (!inSpace) return false;
+      return it.supports.some(function (s) { return target.indexOf(s) > -1; });
+    });
+  }
+
+  // 작업수행 분석 블록(정상 단계 → 막힌 기술 하이라이트)
+  function renderActivityAnalysis(r, blocked) {
+    var an = D.activityAnalysis[r.activity.id];
+    if (!an) return null;
+    var blockedInAct = [];
+    var steps = el('div', { class: 'an-steps' }, an.steps.map(function (st, i) {
+      var chips = st.skills.map(function (sk) {
+        var isB = !!blocked[sk];
+        if (isB && blockedInAct.indexOf(sk) < 0) blockedInAct.push(sk);
+        return el('span', { class: 'skill-chip mini' + (isB ? ' blocked' : '') }, [sk]);
+      });
+      return el('div', { class: 'an-step' + (chips.length && st.skills.some(function (s) { return blocked[s]; }) ? ' has-block' : '') }, [
+        el('span', { class: 'an-step-no' }, [String(i + 1)]),
+        el('span', { class: 'an-step-label' }, [st.label]),
+        el('span', { class: 'an-step-skills' }, chips)
+      ]);
+    }));
+    var summary = blockedInAct.length
+      ? el('div', { class: 'an-blocked' }, [
+          el('b', {}, ['막힌 수행기술: ']), blockedInAct.join(', '),
+          el('span', { class: 'an-tail' }, [' — 아래 솔루션이 이 동작을 제거·대체합니다.'])
+        ])
+      : el('div', { class: 'an-note' }, ['개인 능력만으로는 막힌 기술이 자동 확인되지 않았습니다. 직접 관찰해 보정하세요.']);
+    return el('div', { class: 'analysis-block' }, [
+      el('div', { class: 'an-head' }, ['🔎 작업수행 분석 · 정상 수행 단계']),
+      steps, summary
+    ]);
+  }
+
+  function renderLowtechList(items, blocked) {
+    return el('div', { class: 'lowtech-list' }, items.map(function (it) {
+      var hit = it.supports.filter(function (s) { return blocked[s]; });
+      return el('div', { class: 'lowtech-item' }, [
+        el('div', { class: 'lt-name' }, ['🔧 ' + it.name, el('span', { class: 'lt-tag' }, ['로우테크'])]),
+        el('div', { class: 'lt-why' }, [it.why]),
+        el('div', { class: 'lt-supports' }, (hit.length ? hit : it.supports).map(function (s) {
+          return el('span', { class: 'skill-chip mini' + (blocked[s] ? ' blocked' : '') }, [s]);
+        }))
+      ]);
+    }));
+  }
+
   function renderSolutionItem(r, rec) {
+    var blocked = inferBlockedSkills();
     var levelBadge = r.level === 1
       ? el('span', { class: 'badge badge-limited-1' }, ['수행도 1 · 못함/안함'])
       : el('span', { class: 'badge badge-limited-2' }, ['수행도 2 · 도움받아 함']);
@@ -1985,15 +2067,89 @@
       ]);
     }));
 
-    return el('div', { class: 'sol-item' }, [
+    var lows = lowtechForActivity(r, blocked);
+    var right = [];
+    if (r.activity.tech.length) {
+      right.push(el('div', { class: 'sol-sub' }, ['스마트 홈']));
+      right.push(techList);
+    }
+    if (lows.length) {
+      right.push(el('div', { class: 'sol-sub' }, ['로우테크 환경수정']));
+      right.push(renderLowtechList(lows, blocked));
+    }
+    if (!right.length) right.push(el('div', { class: 'muted' }, ['관찰 후 개별 검토']));
+
+    var mainRow = el('div', { class: 'sol-item' }, [
       el('div', { class: 'sol-left' }, [
         el('div', { class: 'sol-activity' }, [r.activity.label]),
         el('div', { class: 'sol-task' }, [r.task.label]),
         levelBadge
       ]),
       el('div', { class: 'sol-arrow' }, ['→']),
-      el('div', { class: 'sol-right' }, [techList])
+      el('div', { class: 'sol-right' }, right)
     ]);
+
+    return el('div', { class: 'sol-wrap' }, [mainRow, renderActivityAnalysis(r, blocked)]);
+  }
+
+  /* 공간별 로우테크 환경수정 카드(전체 검증용) */
+  function renderLowtechCard(limited) {
+    var blocked = inferBlockedSkills();
+    var spaceIds = {};
+    limited.forEach(function (r) { spaceIds[r.space.id] = true; });
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['공간별 로우테크 환경수정']),
+      el('p', { class: 'section-guide' }, ['스마트 홈 기기와 함께 적용할 물리적 환경수정입니다. 대상자의 막힌 수행기술을 보완하는 항목을 "맞춤"으로 표시했습니다.'])
+    ]);
+    var any = false;
+    D.spaces.forEach(function (space) {
+      if (!spaceIds[space.id]) return;
+      var items = D.lowtechCatalog.filter(function (it) {
+        return it.spaces.indexOf('전체') > -1 || it.spaces.indexOf(space.id) > -1;
+      });
+      if (!items.length) return;
+      any = true;
+      var block = el('div', { class: 'lt-space' }, [el('div', { class: 'sp-title' }, [space.label])]);
+      items.forEach(function (it) {
+        var hit = it.supports.filter(function (s) { return blocked[s]; });
+        block.appendChild(el('div', { class: 'lowtech-item' + (hit.length ? ' lt-hit' : '') }, [
+          el('div', { class: 'lt-name' }, ['🔧 ' + it.name, hit.length ? el('span', { class: 'lt-flag' }, ['맞춤']) : null]),
+          el('div', { class: 'lt-why' }, [it.why]),
+          el('div', { class: 'lt-supports' }, (hit.length ? hit : it.supports).map(function (s) {
+            return el('span', { class: 'skill-chip mini' + (blocked[s] ? ' blocked' : '') }, [s]);
+          }))
+        ]));
+      });
+      card.appendChild(block);
+    });
+    if (!any) card.appendChild(el('div', { class: 'empty-state' }, ['제한 활동이 있는 공간이 없습니다.']));
+    return card;
+  }
+
+  /* 작업수행 분석 근거(OTPF-4) 참고 카드 */
+  function renderSkillRefCard() {
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['작업수행 분석 근거 (OTPF-4)']),
+      el('p', { class: 'section-guide' }, [D.otpfPrinciple])
+    ]);
+    var tbl = el('table', { class: 'ref-table' }, [
+      el('thead', {}, [el('tr', {}, [
+        el('th', {}, ['수행기술']), el('th', {}, ['효과적 수행']), el('th', {}, ['비효과적 수행'])
+      ])]),
+      el('tbody', {}, D.performanceSkillRef.map(function (s) {
+        return el('tr', {}, [
+          el('td', {}, [el('b', {}, [s.name])]),
+          el('td', {}, [s.effective]),
+          el('td', { class: 'ineff' }, [s.ineffective])
+        ]);
+      }))
+    ]);
+    card.appendChild(el('div', { class: 'ref-scroll' }, [tbl]));
+    card.appendChild(el('div', { class: 'ref-bf' }, [
+      el('b', {}, ['관련 신체기능(OTPF-4 Table 9): ']),
+      D.bodyFunctionRef.map(function (b) { return b.name; }).join(' · ')
+    ]));
+    return card;
   }
 
   /* =========================================================
