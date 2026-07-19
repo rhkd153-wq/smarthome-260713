@@ -749,11 +749,16 @@
     { id: 'entrance', label: '현관', icon: '🚪' }
   ];
 
+  // 공간 안에서 같은 활동(id)은 한 번만 (앞 작업에서 이미 확인한 활동은 중복 질문하지 않음)
   function spaceEvalItems(spaceId) {
     var space = D.spaces.filter(function (s) { return s.id === spaceId; })[0];
-    var items = [];
+    var items = [], seen = {};
     if (space) space.tasks.forEach(function (t) {
-      t.activities.forEach(function (a) { items.push({ task: t, activity: a }); });
+      t.activities.forEach(function (a) {
+        if (seen[a.id]) return;
+        seen[a.id] = true;
+        items.push({ task: t, activity: a });
+      });
     });
     return items;
   }
@@ -1293,13 +1298,16 @@
 
   /* 제한되는 활동(수행도 1 또는 2) 수집 — 현재 필터에 보이는 활동만 */
   function collectLimitedActivities() {
-    var out = [];
+    var out = [], seen = {};
     D.spaces.forEach(function (space) {
       space.tasks.forEach(function (task) {
         task.activities.forEach(function (act) {
           if (!activityVisible(act)) return;
           var v = state.performance[perfKey(space.id, task.id, act.id)];
           if (v === 1 || v === 2) {
+            var dk = space.id + '::' + act.id; // 같은 공간의 동일 활동은 한 번만
+            if (seen[dk]) return;
+            seen[dk] = true;
             out.push({ space: space, task: task, activity: act, level: v });
           }
         });
