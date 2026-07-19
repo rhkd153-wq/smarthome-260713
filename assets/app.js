@@ -26,7 +26,7 @@
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '',
               reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '', resultTab: 'summary',
-              personalStep: 0 },
+              personalStep: 0, evalSpace: '', spaceStep: 0, spacesDone: [] },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
@@ -177,9 +177,7 @@
 
   var STEPS = [
     { id: 'intro', label: '시작' },
-    { id: 'screening', label: '현재 활동' },
-    { id: 'needs', label: '주요구 확인' },
-    { id: 'performance', label: '공간별 수행도' },
+    { id: 'spaces', label: '공간 평가' },
     { id: 'personal', label: '개인 능력' },
     { id: 'result', label: '솔루션 제안' }
   ];
@@ -226,7 +224,8 @@
   /* ---------- 진행바 (완료 단계 스탬프) ---------- */
   function renderStepbar() {
     stepbar.innerHTML = '';
-    var currentIdx = STEPS.map(function (s) { return s.id; }).indexOf(state.screen);
+    var sid = (state.screen === 'spaceEval') ? 'spaces' : state.screen;
+    var currentIdx = STEPS.map(function (s) { return s.id; }).indexOf(sid);
     if (currentIdx === -1) { stepbar.style.display = 'none'; return; } // splash/more
     stepbar.style.display = '';
     STEPS.forEach(function (s, i) {
@@ -237,12 +236,10 @@
   }
 
   /* ---------- 게임 요소: 성장하는 집 + 캐릭터 가이드(홈이) ---------- */
-  var STEP_LEVEL = { intro: 0, screening: 1, needs: 2, performance: 3, personal: 4, result: 4 };
+  var STEP_LEVEL = { intro: 0, spaces: 2, spaceEval: 2, personal: 4, result: 4 };
   var GUIDE_MSG = {
     intro: '안녕하세요! 저는 홈스예요. 딱 맞는 스마트 홈을 함께 찾아봐요 🙌',
-    screening: '먼저 지금 집에서 어떻게 지내는지 알려주세요.',
-    needs: '무엇을 스마트 홈으로 스스로 하고 싶은지 골라볼까요?',
-    performance: '공간별로 조금만 더 자세히 확인해요!',
+    spaces: '어느 공간부터 볼까요? 제한되거나 바꾸고 싶은 공간을 눌러주세요.',
     personal: '마지막이에요! 몇 가지만 알려주시면 제가 바로바로 팁을 드릴게요 😊',
     result: '완성! 딱 맞는 솔루션을 찾았어요 🎉'
   };
@@ -401,7 +398,7 @@
       el('div', { class: 'choices' }, [
         hasAnyData() ? el('button', {
           class: 'btn', type: 'button', style: 'padding:8px 16px',
-          onclick: function () { go('screening'); }
+          onclick: function () { go('spaces'); }
         }, ['이어서 진행 →']) : null,
         el('button', {
           class: 'btn', type: 'button', style: 'padding:8px 16px',
@@ -424,7 +421,7 @@
     app.appendChild(fileInput);
 
     renderActions([
-      { label: '평가 시작 →', variant: 'btn-primary', onClick: function () { go('screening'); } }
+      { label: '평가 시작 →', variant: 'btn-primary', onClick: function () { go('spaces'); } }
     ]);
   }
 
@@ -743,6 +740,158 @@
   }
 
   /* =========================================================
+   * 화면 : 공간 평가 허브 (집 평면에서 공간 선택)
+   * =======================================================*/
+  var HUB_ROOMS = [
+    { id: 'living', label: '거실 / 부엌', icon: '🛋️' },
+    { id: 'bedroom', label: '침실', icon: '🛏️' },
+    { id: 'bathroom', label: '화장실', icon: '🚽' },
+    { id: 'entrance', label: '현관', icon: '🚪' }
+  ];
+
+  function spaceEvalItems(spaceId) {
+    var space = D.spaces.filter(function (s) { return s.id === spaceId; })[0];
+    var items = [];
+    if (space) space.tasks.forEach(function (t) {
+      t.activities.forEach(function (a) { items.push({ task: t, activity: a }); });
+    });
+    return items;
+  }
+  function spaceLimitedCount(spaceId) {
+    var n = 0;
+    spaceEvalItems(spaceId).forEach(function (it) {
+      var v = state.performance[perfKey(spaceId, it.task.id, it.activity.id)];
+      if (v === 1 || v === 2) n++;
+    });
+    return n;
+  }
+  function spaceIsDone(spaceId) {
+    return (state.meta.spacesDone || []).indexOf(spaceId) > -1;
+  }
+  function markSpaceDone(spaceId) {
+    var arr = state.meta.spacesDone || [];
+    if (arr.indexOf(spaceId) < 0) arr.push(spaceId);
+    state.meta.spacesDone = arr;
+  }
+
+  function renderSpacesHub() {
+    var container = el('div', {}, []);
+    // 홈스 안내
+    container.appendChild(el('div', { class: 'npc-row' }, [
+      el('div', { class: 'npc-face' }, ['🤖']),
+      el('div', { class: 'npc-bubble' }, [el('b', {}, ['홈스']), ' · ', GUIDE_MSG.spaces])
+    ]));
+    container.appendChild(el('h1', { class: 'page-title', style: 'margin-top:6px' }, ['공간 평가']));
+    container.appendChild(el('p', { class: 'page-sub' }, ['집 평면에서 공간을 눌러 그 공간의 활동을 하나씩 확인해요. 다 하면 개인 능력으로 넘어갑니다.']));
+
+    // 미니 평면도 (그리드) — 공간 버튼
+    var plan = el('div', { class: 'hub-plan' }, []);
+    HUB_ROOMS.forEach(function (r) {
+      var done = spaceIsDone(r.id);
+      var lim = spaceLimitedCount(r.id);
+      var statusText = done ? (lim > 0 ? ('제한 ' + lim + '개') : '제한 없음') : '미평가';
+      plan.appendChild(el('button', {
+        class: 'hub-room hub-' + r.id + (done ? ' done' : ''), type: 'button',
+        onclick: function () {
+          state.meta.evalSpace = r.id; state.meta.spaceStep = 0; go('spaceEval');
+        }
+      }, [
+        el('span', { class: 'hub-room-icon' }, [r.icon]),
+        el('span', { class: 'hub-room-name' }, [r.label]),
+        el('span', { class: 'hub-room-status' + (done && lim > 0 ? ' lim' : '') }, [statusText]),
+        done ? el('span', { class: 'hub-check' }, ['✓']) : null
+      ]));
+    });
+    container.appendChild(plan);
+
+    var doneCount = (state.meta.spacesDone || []).length;
+    app.innerHTML = '';
+    app.appendChild(container);
+    renderActions([
+      { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('intro'); } },
+      {
+        label: doneCount > 0 ? '개인 능력 →' : '건너뛰고 진행 →',
+        variant: 'btn-primary', onClick: function () { go('personal'); }
+      }
+    ]);
+  }
+
+  /* =========================================================
+   * 화면 : 공간별 활동 평가 (한 활동씩, 홈스 안내)
+   * =======================================================*/
+  function renderSpaceEval() {
+    var spaceId = state.meta.evalSpace;
+    var space = D.spaces.filter(function (s) { return s.id === spaceId; })[0];
+    if (!space) { go('spaces'); return; }
+    var items = spaceEvalItems(spaceId);
+    var total = items.length;
+    var idx = Math.max(0, Math.min(state.meta.spaceStep || 0, total - 1));
+    state.meta.spaceStep = idx;
+    var it = items[idx];
+    var key = perfKey(spaceId, it.task.id, it.activity.id);
+    var value = state.performance[key];
+
+    var container = el('div', {}, []);
+    // 진행 표시
+    container.appendChild(el('div', { class: 'pq-top' }, [
+      el('span', { class: 'pq-count' }, [space.label + ' · ' + (idx + 1) + ' / ' + total]),
+      el('div', { class: 'pq-progress' }, [
+        el('div', { class: 'pq-progress-fill', style: 'width:' + Math.round((idx + 1) / total * 100) + '%' }, [])
+      ])
+    ]));
+    // 홈스 질문
+    container.appendChild(el('div', { class: 'npc-row' }, [
+      el('div', { class: 'npc-face' }, ['🤖']),
+      el('div', { class: 'npc-bubble' }, [
+        el('b', {}, ['홈스']), ' · ',
+        el('span', { class: 'se-task' }, [space.label + ' · ' + it.task.label]),
+        el('br', {}, []),
+        '‘' + it.activity.label + '’은(는) 어떻게 하세요?'
+      ])
+    ]));
+    // 수행 정도 선택 (큰 버튼)
+    var card = el('div', { class: 'card pq-card' }, [
+      choiceGroup(
+        D.performanceScale.options.map(function (o) { return { value: o.value, label: o.word }; }),
+        value,
+        function (v) { state.performance[key] = (state.performance[key] === v) ? undefined : v; render(); }
+      )
+    ]);
+    container.appendChild(card);
+    // 홈스 피드백 (제한이면 격려)
+    if (value === 1 || value === 2) {
+      container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+        el('div', { class: 'npc-face' }, ['💡']),
+        el('div', { class: 'npc-bubble' }, ['이 활동은 스마트 홈으로 도울 수 있어요! 마지막에 딱 맞는 기기를 찾아드릴게요.'])
+      ]));
+    } else if (value === 3) {
+      container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+        el('div', { class: 'npc-face' }, ['👍']),
+        el('div', { class: 'npc-bubble' }, ['스스로 잘 하고 계시네요! 이건 그대로 두어도 좋아요.'])
+      ]));
+    }
+
+    app.innerHTML = '';
+    app.appendChild(container);
+    renderActions([
+      {
+        label: '← 이전', variant: 'btn-ghost', align: 'left',
+        onClick: function () {
+          if (idx > 0) { state.meta.spaceStep = idx - 1; render(); }
+          else go('spaces');
+        }
+      },
+      {
+        label: (idx < total - 1) ? '다음 →' : '이 공간 완료 ✓', variant: 'btn-primary',
+        onClick: function () {
+          if (idx < total - 1) { state.meta.spaceStep = idx + 1; render(); }
+          else { markSpaceDone(spaceId); go('spaces'); }
+        }
+      }
+    ]);
+  }
+
+  /* =========================================================
    * 화면 : 개인 능력 (한 화면에 한 질문씩 + 홈스 NPC 즉시 피드백)
    * =======================================================*/
   function personalQuestions() {
@@ -865,7 +1014,7 @@
         label: '← 이전', variant: 'btn-ghost', align: 'left',
         onClick: function () {
           if (qi > 0) { state.meta.personalStep = qi - 1; render(); }
-          else go('performance');
+          else go('spaces');
         }
       },
       {
@@ -1917,13 +2066,15 @@
     document.body.classList.toggle('splash-mode', state.screen === 'splash');
     if (state.screen === 'splash') renderSplash();
     else if (state.screen === 'intro') renderIntro();
-    else if (state.screen === 'screening') renderScreening();
-    else if (state.screen === 'needs') renderNeeds();
-    else if (state.screen === 'performance') renderPerformance();
+    else if (state.screen === 'spaces') renderSpacesHub();
+    else if (state.screen === 'spaceEval') renderSpaceEval();
     else if (state.screen === 'personal') renderPersonalWizard();
     else if (state.screen === 'result') renderResult();
     else if (state.screen === 'more') renderMore();
     else if (state.screen === 'records') renderRecords();
+    // 구버전 저장 화면 안전 폴백
+    else if (state.screen === 'screening' || state.screen === 'needs' || state.screen === 'performance') renderSpacesHub();
+    else renderSpacesHub();
     renderBottomNav();
     // 화면 전환 페이드 애니메이션 (D)
     if (state.screen !== 'splash') {

@@ -487,6 +487,47 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   border: 6px solid transparent; border-right-color: #fff;
 }
 
+/* 공간 평가 허브 — 미니 평면도 */
+.hub-plan {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "living living"
+    "bedroom bath"
+    "bedroom entrance";
+  gap: 10px;
+  margin-top: 12px;
+}
+.hub-living { grid-area: living; min-height: 96px; }
+.hub-bedroom { grid-area: bedroom; min-height: 150px; }
+.hub-bathroom { grid-area: bath; }
+.hub-entrance { grid-area: entrance; }
+.hub-room {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  position: relative;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fbf7f2;
+  padding: 14px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 84px;
+  transition: transform .1s, border-color .1s;
+}
+.hub-room:hover { border-color: var(--primary); transform: translateY(-1px); }
+.hub-room.done { border-color: var(--primary); background: #fdeede; }
+.hub-room-icon { font-size: 1.7rem; }
+.hub-room-name { font-weight: 700; color: var(--text); }
+.hub-room-status { font-size: 0.78rem; color: var(--muted); }
+.hub-room-status.lim { color: var(--primary-dark); font-weight: 700; }
+.hub-check {
+  position: absolute; top: 8px; right: 10px;
+  color: #fff; background: var(--primary);
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800;
+}
+.se-task { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+
 /* 개인 능력 위저드 (한 질문씩 + 홈스 NPC) */
 .pq-top { margin-bottom: 14px; }
 .pq-count { font-size: 0.82rem; font-weight: 700; color: var(--primary-dark); }
