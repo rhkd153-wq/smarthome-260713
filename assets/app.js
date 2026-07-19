@@ -25,7 +25,8 @@
       screen: 'splash',
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '',
-              reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '', resultTab: 'summary' },
+              reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '', resultTab: 'summary',
+              personalStep: 0 },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
@@ -176,9 +177,10 @@
 
   var STEPS = [
     { id: 'intro', label: '시작' },
-    { id: 'screening', label: '기초 스크리닝' },
+    { id: 'screening', label: '현재 활동' },
     { id: 'needs', label: '주요구 확인' },
     { id: 'performance', label: '공간별 수행도' },
+    { id: 'personal', label: '개인 능력' },
     { id: 'result', label: '솔루션 제안' }
   ];
 
@@ -235,12 +237,13 @@
   }
 
   /* ---------- 게임 요소: 성장하는 집 + 캐릭터 가이드(홈이) ---------- */
-  var STEP_LEVEL = { intro: 0, screening: 1, needs: 2, performance: 3, result: 4 };
+  var STEP_LEVEL = { intro: 0, screening: 1, needs: 2, performance: 3, personal: 4, result: 4 };
   var GUIDE_MSG = {
-    intro: '안녕하세요! 저는 홈이예요. 딱 맞는 스마트 홈을 함께 찾아봐요 🙌',
+    intro: '안녕하세요! 저는 홈스예요. 딱 맞는 스마트 홈을 함께 찾아봐요 🙌',
     screening: '먼저 지금 집에서 어떻게 지내는지 알려주세요.',
     needs: '무엇을 스마트 홈으로 스스로 하고 싶은지 골라볼까요?',
     performance: '공간별로 조금만 더 자세히 확인해요!',
+    personal: '마지막이에요! 몇 가지만 알려주시면 제가 바로바로 팁을 드릴게요 😊',
     result: '완성! 딱 맞는 솔루션을 찾았어요 🎉'
   };
 
@@ -272,7 +275,7 @@
       el('div', { class: 'ph-msg' }, [
         el('div', { class: 'ph-mascot' }, ['🤖']),
         el('div', { class: 'ph-bubble' }, [
-          el('b', {}, ['홈이']), ' · ', GUIDE_MSG[screen] || ''
+          el('b', {}, ['홈스']), ' · ', GUIDE_MSG[screen] || ''
         ])
       ])
     ]);
@@ -707,16 +710,13 @@
     var container = el('div', {}, []);
     container.appendChild(renderProgressHero('screening'));
     container.appendChild(el('div', {}, [
-      el('h1', { class: 'page-title' }, ['1. 기초 스크리닝']),
-      el('p', { class: 'page-sub' }, ['가장 먼저 현재 활동 수준을 확인한 뒤, 개인 능력과 환경을 파악합니다.'])
+      el('h1', { class: 'page-title' }, ['1. 현재 활동 수준']),
+      el('p', { class: 'page-sub' }, ['지금 집에서 각 활동을 어떻게 하고 있는지 공간별로 알려주세요. (개인 능력은 마지막에 물어봐요)'])
     ]));
 
-    /* (1) 현재 활동 수준 — 최우선, 공간별 */
+    /* 현재 활동 수준 — 공간별 */
     var ca = D.currentActivityLevel;
-    var caCard = el('div', { class: 'card' }, [
-      el('h2', {}, ['① ' + ca.title]),
-      el('p', { class: 'section-guide' }, [ca.guide])
-    ]);
+    var caCard = el('div', { class: 'card' }, []);
     ca.groups.forEach(function (grp) {
       caCard.appendChild(el('div', { class: 'task-label' }, ['· ' + grp.space]));
       var matrix = el('div', { class: 'matrix' }, []);
@@ -733,16 +733,148 @@
     });
     container.appendChild(caCard);
 
-    /* (2) 개인 능력 + (3) 환경 평가 */
-    container.appendChild(renderFieldCard('② ' + D.personalAbility.title, D.personalAbility, state.personal));
-    container.appendChild(renderFieldCard('③ ' + D.environment.title, D.environment, state.environment));
-
     app.innerHTML = '';
     app.appendChild(container);
 
     renderActions([
       { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('intro'); } },
       { label: '주요구 확인 →', variant: 'btn-primary', onClick: function () { go('needs'); } }
+    ]);
+  }
+
+  /* =========================================================
+   * 화면 : 개인 능력 (한 화면에 한 질문씩 + 홈스 NPC 즉시 피드백)
+   * =======================================================*/
+  function personalQuestions() {
+    var list = [];
+    D.personalAbility.fields.forEach(function (f) { list.push({ f: f, store: 'personal' }); });
+    D.environment.fields.forEach(function (f) { list.push({ f: f, store: 'environment' }); });
+    return list;
+  }
+
+  // 홈스 NPC 즉시 피드백 (선택값에 따라 바로 팁 제공)
+  function npcFeedback(id, value) {
+    if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return null;
+    switch (id) {
+      case 'handUse':
+        if (value === 'operate') return '좋아요! 리모컨·스마트폰을 조작할 수 있으니, 스마트 홈도 이 방식으로 제어하면 딱이에요. 👍';
+        if (value === 'fixed') return '기기를 고정해두면 조작이 되시는군요. 거치형(고정형) 리모컨을 활용하면 좋아요.';
+        if (value === 'unable') return '손 조작이 어려우면 음성(스피커)이나 자동화·AAC를 검토해요. 뒤에서 대화 여부도 확인할게요!';
+        break;
+      case 'communication':
+        if (value === 'good') return '대화가 잘 되시니 음성(스마트 스피커) 제어가 잘 맞아요! 🎙️';
+        if (value === 'unclear') return '발음이 조금 부정확하시군요. 연습해서 더 또렷하게 말해보는 것도 방법이에요. 그게 어렵다면 스마트 스피커(음성)는 사용이 어려울 수 있어요.';
+        if (value === 'unable') return '음성 사용이 어려우니 스마트 스피커 대신 AAC 앱이나 자동화·센서 기반을 검토해요.';
+        break;
+      case 'wifi':
+        if (value === 'no') return 'Wi-Fi가 없으면 블루투스(BLE) 제품을 써야 해요. BLE 제품은 건전지 형태라 주기적으로 갈아줘야 하고 멀어지면 잘 안 되지만, 별도 Wi-Fi 없이 쓸 수 있어 편리해요. 처음 스마트 홈 사용자에게 추천해요! 🔋';
+        if (value === 'yes') return 'Wi-Fi가 있으니 스마트 허브와 다양한 Wi-Fi 기기를 폭넓게 쓸 수 있어요!';
+        break;
+      case 'os':
+        if (value === 'ios') return '아이폰을 쓰시니 Apple 홈(HomeKit)·Siri와 잘 맞아요.';
+        if (value === 'android') return '안드로이드니 SmartThings·Google Home 계열이 잘 맞아요.';
+        break;
+      case 'iotExperience':
+        if (value === 'none') return 'IoT가 처음이시면 설정이 쉬운 초보자 키트부터 시작하는 걸 추천해요! 🌱';
+        if (value === 'using') return '이미 IoT를 쓰고 계시니 허브·자동화까지 확장해볼 수 있어요.';
+        break;
+      case 'ecosystem':
+        var tips = [];
+        if (value.indexOf('samsung') > -1) tips.push('삼성 가전 → SmartThings로 묶으면 편해요');
+        if (value.indexOf('lg') > -1) tips.push('LG 가전 → LG ThinQ가 잘 맞아요');
+        if (value.indexOf('apple') > -1) tips.push('애플 기기 → Apple 홈으로 묶어요');
+        if (value.indexOf('kt') > -1) tips.push('KT → 기가지니도 활용 가능');
+        return tips.length ? ('보유하신 브랜드에 맞춰 추천해요: ' + tips.join(' · ') + '.') : null;
+      case 'indoorMobility':
+        if (value === 'unable') return '이동이 어려우면 동작·재실 센서로 자동 제어를 넣으면 편해요.';
+        break;
+    }
+    return null;
+  }
+
+  function renderPersonalWizard() {
+    var qs = personalQuestions();
+    var total = qs.length;
+    var qi = Math.max(0, Math.min(state.meta.personalStep || 0, total - 1));
+    state.meta.personalStep = qi;
+    var item = qs[qi];
+    var f = item.f;
+    var store = state[item.store];
+    var value = store[f.id];
+
+    var container = el('div', {}, []);
+    // 진행 표시
+    container.appendChild(el('div', { class: 'pq-top' }, [
+      el('span', { class: 'pq-count' }, ['개인 능력 · ' + (qi + 1) + ' / ' + total]),
+      el('div', { class: 'pq-progress' }, [
+        el('div', { class: 'pq-progress-fill', style: 'width:' + Math.round((qi + 1) / total * 100) + '%' }, [])
+      ])
+    ]));
+
+    // 홈스가 질문
+    container.appendChild(el('div', { class: 'npc-row' }, [
+      el('div', { class: 'npc-face' }, ['🤖']),
+      el('div', { class: 'npc-bubble' }, [el('b', {}, ['홈스']), ' · ', (f.q || f.label)])
+    ]));
+
+    // 입력 카드
+    var card = el('div', { class: 'card pq-card' }, []);
+    if (f.type === 'text') {
+      card.appendChild(el('input', {
+        type: 'text', placeholder: f.placeholder || '', value: value || '',
+        oninput: function (e) { store[f.id] = e.target.value; saveState(); }
+      }, []));
+    } else if (f.type === 'choice') {
+      card.appendChild(choiceGroup(f.options, value, function (v) {
+        store[f.id] = (store[f.id] === v) ? undefined : v;
+        render();
+      }));
+      // 기타 주관식
+      if (f.otherField && value === 'etc') {
+        card.appendChild(el('input', {
+          type: 'text', placeholder: '기타 장애 유형을 적어주세요', value: store[f.otherField] || '',
+          style: 'margin-top:10px',
+          oninput: function (e) { store[f.otherField] = e.target.value; saveState(); }
+        }, []));
+      }
+    } else if (f.type === 'multi') {
+      card.appendChild(choiceGroup(f.options, value || [], function (v) {
+        var arr = store[f.id] || [];
+        var idx = arr.indexOf(v);
+        if (idx > -1) arr.splice(idx, 1); else arr.push(v);
+        store[f.id] = arr;
+        render();
+      }, true));
+    }
+    container.appendChild(card);
+
+    // 홈스 즉시 피드백
+    var fb = npcFeedback(f.id, value);
+    if (fb) {
+      container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+        el('div', { class: 'npc-face' }, ['💡']),
+        el('div', { class: 'npc-bubble' }, [fb])
+      ]));
+    }
+
+    app.innerHTML = '';
+    app.appendChild(container);
+
+    renderActions([
+      {
+        label: '← 이전', variant: 'btn-ghost', align: 'left',
+        onClick: function () {
+          if (qi > 0) { state.meta.personalStep = qi - 1; render(); }
+          else go('performance');
+        }
+      },
+      {
+        label: (qi < total - 1) ? '다음 →' : '솔루션 도출 →', variant: 'btn-primary',
+        onClick: function () {
+          if (qi < total - 1) { state.meta.personalStep = qi + 1; render(); }
+          else go('result');
+        }
+      }
     ]);
   }
 
@@ -990,10 +1122,10 @@
     renderActions([
       { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('needs'); } },
       {
-        label: '솔루션 도출 (' + limited.length + ') →',
+        label: '개인 능력 (' + limited.length + ') →',
         variant: 'btn-primary',
         disabled: limited.length === 0,
-        onClick: function () { go('result'); }
+        onClick: function () { go('personal'); }
       }
     ]);
   }
@@ -1360,7 +1492,7 @@
     }, []));
 
     renderActions([
-      { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('performance'); } },
+      { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('personal'); } },
       { label: '불러오기', variant: '', onClick: function () { document.getElementById('import-file-result').click(); } },
       { label: '내보내기(JSON)', variant: '', onClick: exportJSON },
       { label: '인쇄 / PDF', variant: '', onClick: function () { window.print(); } },
@@ -1396,8 +1528,9 @@
     function add(label, value) { if (value != null && value !== '') rows.push({ label: label, value: value }); }
 
     add('이름', p.name);
-    add('나이', p.age ? (p.age + '세') : '');
-    add('장애 유형', p.disabilityType);
+    if (p.age) add('나이', labelOf(pf, 'age', p.age));
+    if (p.disabilityType) add('장애 유형', labelOf(pf, 'disabilityType', p.disabilityType) +
+      (p.disabilityType === 'etc' && p.disabilityTypeEtc ? (' (' + p.disabilityTypeEtc + ')') : ''));
     if (p.disabilityLevel) add('장애 정도', labelOf(pf, 'disabilityLevel', p.disabilityLevel));
     if (p.indoorMobility) add('실내 보행', labelOf(pf, 'indoorMobility', p.indoorMobility));
     if (p.handUse) add('손의 기능적 사용', labelOf(pf, 'handUse', p.handUse));
@@ -1787,6 +1920,7 @@
     else if (state.screen === 'screening') renderScreening();
     else if (state.screen === 'needs') renderNeeds();
     else if (state.screen === 'performance') renderPerformance();
+    else if (state.screen === 'personal') renderPersonalWizard();
     else if (state.screen === 'result') renderResult();
     else if (state.screen === 'more') renderMore();
     else if (state.screen === 'records') renderRecords();

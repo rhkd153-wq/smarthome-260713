@@ -56,18 +56,40 @@ window.SHData = (function () {
     id: 'personal',
     title: '개인 능력',
     fields: [
-      { id: 'name', label: '이름', type: 'text', placeholder: '이름' },
-      { id: 'age', label: '나이', type: 'number', suffix: '세', placeholder: '나이' },
-      { id: 'disabilityType', label: '장애 유형', type: 'text', placeholder: '예) 지체, 뇌병변 등' },
+      { id: 'name', label: '이름', type: 'text', placeholder: '이름', q: '대상자의 이름을 알려주세요.' },
       {
-        id: 'disabilityLevel', label: '장애 정도', type: 'choice',
+        id: 'age', label: '나이 (연령대)', type: 'choice', q: '연령대가 어떻게 되세요?',
+        options: [
+          { value: 'u20', label: '20대 이하' },
+          { value: '30', label: '30대' },
+          { value: '4050', label: '40~50대' },
+          { value: '60', label: '60대' },
+          { value: '70', label: '70대' },
+          { value: '80', label: '80대 이상' }
+        ]
+      },
+      {
+        id: 'disabilityType', label: '장애 유형', type: 'choice', q: '장애 유형은 무엇인가요?',
+        otherField: 'disabilityTypeEtc',
+        options: [
+          { value: 'physical', label: '지체' },
+          { value: 'brain', label: '뇌병변' },
+          { value: 'visual', label: '시각' },
+          { value: 'hearing', label: '청각' },
+          { value: 'developmental', label: '발달' },
+          { value: 'mental', label: '정신' },
+          { value: 'etc', label: '기타' }
+        ]
+      },
+      {
+        id: 'disabilityLevel', label: '장애 정도', type: 'choice', q: '장애 정도는 어떤가요?',
         options: [
           { value: 'severe', label: '심한' },
           { value: 'mild', label: '심하지 않은' }
         ]
       },
       {
-        id: 'indoorMobility', label: '실내 보행', type: 'choice',
+        id: 'indoorMobility', label: '실내 보행', type: 'choice', q: '집 안에서 이동은 어떻게 하세요?',
         options: [
           { value: 'good', label: '잘함 (보조기기 사용 포함)' },
           { value: 'assisted', label: '어려움 · 도움' },
@@ -75,7 +97,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'handUse', label: '손의 기능적 사용', type: 'choice',
+        id: 'handUse', label: '손의 기능적 사용', type: 'choice', q: '손으로 리모컨·스마트폰 조작은 어떠세요?',
         options: [
           { value: 'operate', label: '리모컨 · 스마트폰 조작' },
           { value: 'fixed', label: '고정된 경우 조작 가능' },
@@ -83,7 +105,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'communication', label: '대화 가능 여부', type: 'choice',
+        id: 'communication', label: '대화 가능 여부', type: 'choice', q: '대화(발화)는 어떠세요?',
         options: [
           { value: 'good', label: '잘함' },
           { value: 'unclear', label: '발음 부정확' },
@@ -91,7 +113,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'discomfort', label: '생활불편 인식 여부', type: 'choice',
+        id: 'discomfort', label: '생활불편 인식 여부', type: 'choice', q: '지금 생활에서 불편함을 느끼세요?',
         options: [
           { value: 'yes', label: '불편함' },
           { value: 'no', label: '없음' }
@@ -106,14 +128,14 @@ window.SHData = (function () {
     title: '환경 평가',
     fields: [
       {
-        id: 'smartphone', label: '스마트폰', type: 'choice',
+        id: 'smartphone', label: '스마트폰', type: 'choice', q: '스마트폰을 사용하세요?',
         options: [
           { value: 'yes', label: '있음' },
           { value: 'no', label: '없음' }
         ]
       },
       {
-        id: 'os', label: '스마트폰 사용시 OS', type: 'choice',
+        id: 'os', label: '스마트폰 사용시 OS', type: 'choice', q: '어떤 스마트폰을 쓰세요?',
         options: [
           { value: 'android', label: '안드로이드' },
           { value: 'ios', label: 'iOS (애플)' },
@@ -121,14 +143,14 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'wifi', label: 'Wi-Fi', type: 'choice',
+        id: 'wifi', label: 'Wi-Fi', type: 'choice', q: '집에 Wi-Fi(인터넷)가 있나요?',
         options: [
           { value: 'yes', label: '있음' },
           { value: 'no', label: '없음' }
         ]
       },
       {
-        id: 'household', label: '가구 형태', type: 'choice',
+        id: 'household', label: '가구 형태', type: 'choice', q: '가구 형태는 어떻게 되세요?',
         options: [
           { value: 'alone', label: '독거' },
           { value: 'couple', label: '부부만 거주' },
@@ -136,7 +158,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'housing', label: '주거 형태', type: 'choice',
+        id: 'housing', label: '주거 형태', type: 'choice', q: '어떤 집에 사세요?',
         options: [
           { value: 'detached', label: '단독 주택' },
           { value: 'apartment', label: '아파트' },
@@ -144,7 +166,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'controlPanel', label: '통합 주택 제어판 기능 (있을 때)', type: 'multi',
+        id: 'controlPanel', label: '통합 주택 제어판 기능 (있을 때)', type: 'multi', q: '집에 통합 제어판이 있다면 어떤 기능이 있나요? (여러 개 선택)',
         options: [
           { value: 'light', label: '조명 제어' },
           { value: 'heating', label: '난방 제어' },
@@ -152,7 +174,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'iotExperience', label: 'IoT 사용 경험', type: 'choice',
+        id: 'iotExperience', label: 'IoT 사용 경험', type: 'choice', q: '스마트 기기(IoT)를 써보신 적 있나요?',
         options: [
           { value: 'using', label: '사용중' },
           { value: 'tried', label: '경험만 있음' },
@@ -160,7 +182,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'ecosystem', label: '보유 브랜드 · 생태계 (해당 시)', type: 'multi',
+        id: 'ecosystem', label: '보유 브랜드 · 생태계 (해당 시)', type: 'multi', q: '어떤 브랜드 가전·기기를 갖고 계세요? (여러 개 선택)',
         options: [
           { value: 'samsung', label: '삼성 가전' },
           { value: 'lg', label: 'LG 가전' },
@@ -171,7 +193,7 @@ window.SHData = (function () {
         ]
       },
       {
-        id: 'appliancesText', label: '현재 사용 중인 가전·스마트 기기 (기입)', type: 'text',
+        id: 'appliancesText', label: '현재 사용 중인 가전·스마트 기기 (기입)', type: 'text', q: '지금 쓰는 가전·스마트 기기가 있으면 적어주세요.',
         placeholder: '예) 스마트 TV, 에어컨, 로봇청소기, AI 스피커 등'
       }
     ]
