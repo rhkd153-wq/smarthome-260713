@@ -241,7 +241,7 @@
   /* ---------- 게임 요소: 성장하는 집 + 캐릭터 가이드(홈이) ---------- */
   var STEP_LEVEL = { intro: 0, spaces: 2, spaceEval: 2, personal: 4, result: 4 };
   var GUIDE_MSG = {
-    intro: '안녕하세요! 저는 홈스예요. 딱 맞는 스마트 홈을 함께 찾아봐요 🙌',
+    intro: '안녕하세요! 저는 문스예요. 딱 맞는 스마트 홈을 함께 찾아봐요 🙌',
     spaces: '어느 공간부터 볼까요? 제한되거나 바꾸고 싶은 공간을 눌러주세요.',
     personal: '마지막이에요! 몇 가지만 알려주시면 제가 바로바로 팁을 드릴게요 😊',
     result: '완성! 딱 맞는 솔루션을 찾았어요 🎉'
@@ -282,7 +282,7 @@
       el('div', { class: 'ph-msg' }, [
         el('div', { class: 'ph-mascot' }, ['🤖']),
         el('div', { class: 'ph-bubble' }, [
-          el('b', {}, ['홈스']), ' · ', GUIDE_MSG[screen] || ''
+          el('b', {}, ['문스']), ' · ', GUIDE_MSG[screen] || ''
         ])
       ])
     ]);
@@ -792,10 +792,10 @@
   function renderSpacesHub() {
     var container = el('div', {}, []);
     container.appendChild(gameTopbar());
-    // 홈스 안내
+    // 문스 안내
     container.appendChild(el('div', { class: 'npc-row' }, [
       el('div', { class: 'npc-face' }, ['🤖']),
-      el('div', { class: 'npc-bubble' }, [el('b', {}, ['홈스']), ' · ', GUIDE_MSG.spaces])
+      el('div', { class: 'npc-bubble' }, [el('b', {}, ['문스']), ' · ', GUIDE_MSG.spaces])
     ]));
     container.appendChild(el('h1', { class: 'page-title', style: 'margin-top:6px' }, ['공간 평가']));
     container.appendChild(el('p', { class: 'page-sub' }, ['집 평면에서 공간을 눌러 그 공간의 활동을 하나씩 확인해요. 다 하면 개인 능력으로 넘어갑니다.']));
@@ -833,7 +833,7 @@
   }
 
   /* =========================================================
-   * 화면 : 공간별 활동 평가 (한 활동씩, 홈스 안내)
+   * 화면 : 공간별 활동 평가 (한 활동씩, 문스 안내)
    * =======================================================*/
   function renderSpaceEval() {
     var spaceId = state.meta.evalSpace;
@@ -856,11 +856,11 @@
         el('div', { class: 'pq-progress-fill', style: 'width:' + Math.round((idx + 1) / total * 100) + '%' }, [])
       ])
     ]));
-    // 홈스 질문
+    // 문스 질문
     container.appendChild(el('div', { class: 'npc-row' }, [
       el('div', { class: 'npc-face' }, ['🤖']),
       el('div', { class: 'npc-bubble' }, [
-        el('b', {}, ['홈스']), ' · ',
+        el('b', {}, ['문스']), ' · ',
         el('span', { class: 'se-task' }, [space.label + ' · ' + it.task.label]),
         el('br', {}, []),
         '‘' + it.activity.label + '’은(는) 어떻게 하세요?'
@@ -875,7 +875,7 @@
       )
     ]);
     container.appendChild(card);
-    // 홈스 피드백 (제한이면 격려)
+    // 문스 피드백 (제한이면 격려)
     if (value === 1 || value === 2) {
       container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
         el('div', { class: 'npc-face' }, ['💡']),
@@ -909,7 +909,7 @@
   }
 
   /* =========================================================
-   * 화면 : 개인 능력 (한 화면에 한 질문씩 + 홈스 NPC 즉시 피드백)
+   * 화면 : 개인 능력 (한 화면에 한 질문씩 + 문스 NPC 즉시 피드백)
    * =======================================================*/
   function personalQuestions() {
     var list = [];
@@ -922,7 +922,7 @@
     return list;
   }
 
-  // 홈스 NPC 즉시 피드백 (선택값에 따라 바로 팁 제공)
+  // 문스 NPC 즉시 피드백 (선택값에 따라 바로 팁 제공)
   function npcFeedback(id, value) {
     if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return null;
     switch (id) {
@@ -1006,10 +1006,10 @@
       ])
     ]));
 
-    // 홈스가 질문
+    // 문스가 질문
     container.appendChild(el('div', { class: 'npc-row' }, [
       el('div', { class: 'npc-face' }, ['🤖']),
-      el('div', { class: 'npc-bubble' }, [el('b', {}, ['홈스']), ' · ', (f.q || f.label)])
+      el('div', { class: 'npc-bubble' }, [el('b', {}, ['문스']), ' · ', (f.q || f.label)])
     ]));
 
     // 입력 카드
@@ -1043,7 +1043,7 @@
     }
     container.appendChild(card);
 
-    // 홈스 즉시 피드백
+    // 문스 즉시 피드백
     var fb = npcFeedback(f.id, value);
     if (fb) {
       container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
@@ -1579,7 +1579,7 @@
    * =======================================================*/
   var LEVEL_META = {
     0: { short: '미경험', cls: 'lv0' },
-    1: { short: '못함·안함', cls: 'lv1' },
+    1: { short: '못함', cls: 'lv1' },
     2: { short: '도움', cls: 'lv2' },
     3: { short: '스스로', cls: 'lv3' }
   };
@@ -1657,27 +1657,30 @@
     ]);
     card.appendChild(legend);
 
-    var grid = el('div', { class: 'track-grid' }, []);
-    // 헤더
-    var head = el('div', { class: 'track-grow track-head' }, [el('div', { class: 'track-name' }, ['활동'])]);
-    TRACK_WEEKS.forEach(function (w) { head.appendChild(el('div', { class: 'track-cell-h' }, [trackLabel(w)])); });
-    grid.appendChild(head);
-    // 행
+    // 활동별 카드 (모바일에서 가로 스크롤 없이)
     limited.forEach(function (r) {
       var key = perfKey(r.space.id, r.task.id, r.activity.id);
-      var row = el('div', { class: 'track-grow' }, [
-        el('div', { class: 'track-name' }, [r.space.label + ' · ' + r.activity.label])
+      var base = levelAt('base', key);
+      var latest = latestLevel(key);
+      var improvedThis = (latest != null && base != null && latest > base);
+      var item = el('div', { class: 'track-item' + (improvedThis ? ' improved' : '') }, [
+        el('div', { class: 'track-item-name' }, [
+          r.space.label + ' · ' + r.activity.label,
+          improvedThis ? el('span', { class: 'track-up' }, [' ⬆️ 향상']) : null
+        ])
       ]);
+      var cells = el('div', { class: 'track-cells' }, []);
       TRACK_WEEKS.forEach(function (w) {
         var lv = levelAt(w, key);
         var meta = (lv != null) ? LEVEL_META[lv] : null;
-        row.appendChild(el('div', { class: 'track-cell' }, [
-          el('span', { class: 'track-pill ' + (meta ? meta.cls : 'lv-empty') }, [meta ? meta.short : '–'])
+        cells.appendChild(el('div', { class: 'tcell' }, [
+          el('span', { class: 'track-pill ' + (meta ? meta.cls : 'lv-empty') }, [meta ? meta.short : '–']),
+          el('span', { class: 'tcell-w' }, [trackLabel(w)])
         ]));
       });
-      grid.appendChild(row);
+      item.appendChild(cells);
+      card.appendChild(item);
     });
-    card.appendChild(el('div', { class: 'track-grid-wrap' }, [grid]));
     return card;
   }
 
@@ -1717,7 +1720,7 @@
     var activeTab = state.meta.resultTab || 'summary';
     var RTABS = [
       { id: 'summary', label: '📋 요약' },
-      { id: 'plan', label: '🏠 설계도·솔루션' },
+      { id: 'plan', label: '🏠 설계도' },
       { id: 'buy', label: '🛒 기기·구매' },
       { id: 'care', label: '📝 계획·교육' },
       { id: 'track', label: '📈 추적' }
