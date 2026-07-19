@@ -26,12 +26,14 @@
       meta: { org: '', staff: '', contact: '', needsExtra: '', date: '',
               goal: '', budget: '', scenario: '', kitOverride: '',
               reviewRating: 0, reviewText: '', perfShowAll: false, recordId: '', resultTab: 'summary',
-              personalStep: 0, evalSpace: '', spaceStep: 0, spacesDone: [] },
+              personalStep: 0, evalSpace: '', spaceStep: 0, spacesDone: [],
+              trackWeek: 'base', eduChecked: {} },
       currentActivity: {},   // { itemId: 'self' | 'assisted' | 'none' }
       needs: {},             // { itemId: true|false } 주요구 확인 결과
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
       environment: {},
-      performance: {}        // { 'spaceId::taskId::activityId': 0|1|2|3 }
+      performance: {},       // { 'spaceId::taskId::activityId': 0|1|2|3 } (기준선)
+      followup: {}           // { '1'|'2'|'3'|'4': { key: 0|1|2|3 } } 주차별 재평가
     };
   }
   var state = blankState();
@@ -60,7 +62,8 @@
   function snapshotState() {
     return JSON.parse(JSON.stringify({
       meta: state.meta, currentActivity: state.currentActivity, needs: state.needs,
-      personal: state.personal, environment: state.environment, performance: state.performance
+      personal: state.personal, environment: state.environment, performance: state.performance,
+      followup: state.followup
     }));
   }
   // 현재 평가를 기록에 저장(있으면 갱신)
@@ -82,7 +85,7 @@
     if (!rec) return;
     var fresh = blankState();
     var snap = rec.snapshot || {};
-    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance'].forEach(function (k) {
+    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance', 'followup'].forEach(function (k) {
       if (snap[k] != null) fresh[k] = snap[k];
     });
     var mDefaults = blankState().meta;
@@ -1526,6 +1529,171 @@
   }
 
   /* =========================================================
+   * 사용자 교육 체크리스트 (제공 시 교육 영역)
+   * =======================================================*/
+  function renderEducationCard(rec, limited) {
+    var hasBLE = false;
+    // BLE 기기 포함 여부
+    var devMap = spaceDeviceMap(limited, rec);
+    Object.keys(devMap).forEach(function (sid) {
+      devMap[sid].forEach(function (d) {
+        var c = D.deviceConnectivity[d];
+        if (c === 'ble') hasBLE = true;
+      });
+    });
+
+    var items = [
+      { id: 'ctrl', text: '권장 제어 방식(' + (rec.primary || '앱·리모컨 등') + ')으로 기기 켜고 끄기 익히기' },
+      { id: 'auto', text: '자동화 시나리오 이해하고 함께 설정해보기 (예: 기상 시 커튼 열림)' },
+      { id: 'trouble', text: '문제 발생 시 대처: 전원·Wi-Fi 확인, 기기 재시작' },
+      { id: 'account', text: '계정·비밀번호 관리 등 기본 디지털 리터러시' },
+      { id: 'family', text: '보호자·가족과 함께 사용법 공유' },
+      { id: 'as', text: 'A/S 문의처와 무상 보증 기간 확인' }
+    ];
+    if (hasBLE) items.splice(3, 0, { id: 'battery', text: 'BLE(블루투스) 기기 건전지 주기적으로 교체하기' });
+
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['사용자 교육 (제공 시 함께 진행)']),
+      el('p', { class: 'section-guide' }, ['스마트 홈은 설치만으로 끝나지 않아요. 아래 항목을 사용자·보호자와 함께 교육하며 체크하세요.'])
+    ]);
+    var m = state.meta;
+    items.forEach(function (it) {
+      var checked = !!(m.eduChecked && m.eduChecked[it.id]);
+      card.appendChild(el('button', {
+        class: 'edu-item' + (checked ? ' done' : ''), type: 'button',
+        onclick: function () {
+          if (!m.eduChecked) m.eduChecked = {};
+          m.eduChecked[it.id] = !checked;
+          render();
+        }
+      }, [
+        el('span', { class: 'edu-check' }, [checked ? '✓' : '']),
+        el('span', { class: 'edu-text' }, [it.text])
+      ]));
+    });
+    return card;
+  }
+
+  /* =========================================================
+   * 주차별 추적 평가 (1~4주) + 전후 비교 도표
+   * =======================================================*/
+  var LEVEL_META = {
+    0: { short: '미경험', cls: 'lv0' },
+    1: { short: '못함·안함', cls: 'lv1' },
+    2: { short: '도움', cls: 'lv2' },
+    3: { short: '스스로', cls: 'lv3' }
+  };
+  var TRACK_WEEKS = ['base', '1', '2', '3', '4'];
+  function trackLabel(w) { return w === 'base' ? '기준' : (w + '주'); }
+  function levelAt(week, key) {
+    if (week === 'base') return state.performance[key];
+    return (state.followup[week] || {})[key];
+  }
+  function setLevelAt(week, key, v) {
+    if (!state.followup[week]) state.followup[week] = {};
+    var cur = state.followup[week][key];
+    state.followup[week][key] = (cur === v) ? undefined : v;
+  }
+
+  function renderTrackCard(limited) {
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['주차별 추적 · 전후 비교']),
+      el('p', { class: 'section-guide' }, ['스마트 홈을 사용한 뒤 1~4주에 다시 평가하면, "도움받아 함 → 스스로 함" 변화가 한눈에 보여요.'])
+    ]);
+
+    if (limited.length === 0) {
+      card.appendChild(el('div', { class: 'empty-state' }, ['추적할 제한 활동이 없습니다.']));
+      return card;
+    }
+
+    // 향상 요약
+    var improved = 0, toIndep = 0;
+    limited.forEach(function (r) {
+      var key = perfKey(r.space.id, r.task.id, r.activity.id);
+      var base = r.level;
+      var latest = latestLevel(key);
+      if (latest != null && latest > base) improved++;
+      if (latest === 3 && base < 3) toIndep++;
+    });
+    card.appendChild(el('div', { class: 'track-summary' }, [
+      stat(limited.length, '추적 활동'),
+      stat(improved, '향상 ⬆️'),
+      stat(toIndep, '스스로 달성 🎉')
+    ]));
+
+    // 주차 선택 (기준 + 1~4주)
+    var week = state.meta.trackWeek || 'base';
+    card.appendChild(el('div', { class: 'week-tabs' }, TRACK_WEEKS.map(function (w) {
+      return el('button', {
+        class: 'week-tab' + (w === week ? ' active' : ''), type: 'button',
+        onclick: function () { state.meta.trackWeek = w; render(); }
+      }, [trackLabel(w)]);
+    })));
+
+    // 선택 주차 입력 (기준은 읽기전용 안내)
+    if (week === 'base') {
+      card.appendChild(el('p', { class: 'section-guide' }, ['기준(초기 평가) 값입니다. 1~4주 탭을 눌러 사용 후 다시 평가하세요.']));
+    } else {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, [week + '주차 재평가: ']), '지금은 각 활동을 어떻게 하고 있나요? 선택하면 아래 비교표에 반영됩니다.'
+      ]));
+      limited.forEach(function (r) {
+        var key = perfKey(r.space.id, r.task.id, r.activity.id);
+        card.appendChild(el('div', { class: 'matrix-row' }, [
+          el('div', { class: 'row-label' }, [r.space.label + ' · ' + r.activity.label]),
+          choiceGroup(
+            D.performanceScale.options.map(function (o) { return { value: o.value, label: o.word }; }),
+            levelAt(week, key),
+            function (v) { setLevelAt(week, key, v); saveState(); render(); }
+          )
+        ]));
+      });
+    }
+
+    // 전후 비교 도표
+    card.appendChild(el('div', { class: 'track-chart-title' }, ['전후 비교표']));
+    var legend = el('div', { class: 'track-legend' }, [
+      legendDot('lv1', '못함·안함'), legendDot('lv2', '도움받아 함'), legendDot('lv3', '스스로 함')
+    ]);
+    card.appendChild(legend);
+
+    var grid = el('div', { class: 'track-grid' }, []);
+    // 헤더
+    var head = el('div', { class: 'track-grow track-head' }, [el('div', { class: 'track-name' }, ['활동'])]);
+    TRACK_WEEKS.forEach(function (w) { head.appendChild(el('div', { class: 'track-cell-h' }, [trackLabel(w)])); });
+    grid.appendChild(head);
+    // 행
+    limited.forEach(function (r) {
+      var key = perfKey(r.space.id, r.task.id, r.activity.id);
+      var row = el('div', { class: 'track-grow' }, [
+        el('div', { class: 'track-name' }, [r.space.label + ' · ' + r.activity.label])
+      ]);
+      TRACK_WEEKS.forEach(function (w) {
+        var lv = levelAt(w, key);
+        var meta = (lv != null) ? LEVEL_META[lv] : null;
+        row.appendChild(el('div', { class: 'track-cell' }, [
+          el('span', { class: 'track-pill ' + (meta ? meta.cls : 'lv-empty') }, [meta ? meta.short : '–'])
+        ]));
+      });
+      grid.appendChild(row);
+    });
+    card.appendChild(el('div', { class: 'track-grid-wrap' }, [grid]));
+    return card;
+  }
+
+  function legendDot(cls, label) {
+    return el('span', { class: 'track-leg' }, [el('span', { class: 'track-pill ' + cls }, ['']), label]);
+  }
+  // 가장 최근에 기록된 주차의 수준 (4→1주 순, 없으면 기준)
+  function latestLevel(key) {
+    for (var i = 4; i >= 1; i--) {
+      var v = (state.followup[String(i)] || {})[key];
+      if (v != null) return v;
+    }
+    return state.performance[key];
+  }
+
+  /* =========================================================
    * 화면 3 : 솔루션 제안서 (양식지 3)
    * =======================================================*/
   function renderResult() {
@@ -1551,7 +1719,8 @@
       { id: 'summary', label: '📋 요약' },
       { id: 'plan', label: '🏠 설계도·솔루션' },
       { id: 'buy', label: '🛒 기기·구매' },
-      { id: 'care', label: '📝 계획' }
+      { id: 'care', label: '📝 계획·교육' },
+      { id: 'track', label: '📈 추적' }
     ];
     container.appendChild(el('div', { class: 'result-tabbar no-print' }, RTABS.map(function (t) {
       return el('button', {
@@ -1671,10 +1840,15 @@
     /* [기기·구매] 연결 구조 및 구매 안내 */
     if (limited.length > 0) sec('buy', renderConnectivityCard(limited, rec));
 
+    /* [계획] 사용자 교육 체크리스트 */
+    if (limited.length > 0) sec('care', renderEducationCard(rec, limited));
     /* [계획] 중재 계획 및 유의사항 */
     sec('care', renderInterventionCard());
     /* [계획] 제작 크레딧 */
     sec('care', el('div', { class: 'report-source' }, [MAKER_CREDIT]));
+
+    /* [추적] 주차별 추적 평가 + 전후 비교 */
+    sec('track', renderTrackCard(limited));
 
     app.innerHTML = '';
     app.appendChild(container);

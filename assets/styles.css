@@ -588,6 +588,58 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .flow-step .d { color: var(--muted); font-size: .8rem; margin-top: 4px; }
 
 /* ---------- 결과 (솔루션 제안서) ---------- */
+/* 사용자 교육 체크리스트 */
+.edu-item {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  background: #fcfdfe; border: 1px solid var(--line);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+  cursor: pointer; font-family: inherit; font-size: 0.92rem; color: var(--text);
+}
+.edu-item.done { background: #e6f4ea; border-color: #9bd3ab; }
+.edu-check {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 6px;
+  border: 2px solid var(--line); display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 0.8rem;
+}
+.edu-item.done .edu-check { background: var(--ok); border-color: var(--ok); }
+.edu-text { flex: 1; }
+.edu-item.done .edu-text { text-decoration: line-through; color: var(--muted); }
+
+/* 주차별 추적 · 전후 비교 */
+.track-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 14px; }
+.week-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }
+.week-tab {
+  flex: 0 0 auto; border: 1px solid var(--line); background: #fff; color: var(--muted);
+  font-weight: 700; font-size: 0.85rem; padding: 8px 14px; border-radius: 999px;
+  cursor: pointer; font-family: inherit;
+}
+.week-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.track-chart-title { font-weight: 700; color: var(--primary-dark); margin: 16px 0 8px; }
+.track-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.8rem; color: var(--muted); }
+.track-leg { display: inline-flex; align-items: center; gap: 5px; }
+.track-grid-wrap { overflow-x: auto; }
+.track-grid { min-width: 420px; }
+.track-grow {
+  display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); align-items: center; gap: 4px;
+  padding: 5px 0; border-top: 1px solid var(--line);
+}
+.track-head { border-top: none; }
+.track-name { font-size: 0.82rem; font-weight: 600; padding-right: 6px; }
+.track-cell-h { text-align: center; font-size: 0.74rem; font-weight: 700; color: var(--muted); }
+.track-cell { text-align: center; }
+.track-pill {
+  display: inline-block; min-width: 46px; padding: 4px 6px; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 700; color: #fff;
+}
+.track-leg .track-pill { min-width: 16px; padding: 0; width: 16px; height: 16px; border-radius: 50%; }
+.track-pill.lv0 { background: #b7ada0; }
+.track-pill.lv1 { background: var(--danger); }
+.track-pill.lv2 { background: var(--accent); color: #4a3000; }
+.track-pill.lv3 { background: var(--ok); }
+.track-pill.lv-empty { background: transparent; color: var(--muted); min-width: 20px; }
+
 /* 결과 하위 탭 */
 .result-tabbar {
   display: flex;
