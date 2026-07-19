@@ -487,6 +487,21 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   border: 6px solid transparent; border-right-color: #fff;
 }
 
+/* 게임 화면 상단 초기화 버튼 */
+.game-topbar { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.reset-chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.reset-chip:hover { border-color: var(--danger); color: var(--danger); }
+
 /* 공간 평가 허브 — 미니 평면도 */
 .hub-plan {
   display: grid;

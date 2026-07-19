@@ -56,7 +56,7 @@ window.SHData = (function () {
     id: 'personal',
     title: '개인 능력',
     fields: [
-      { id: 'name', label: '이름', type: 'text', placeholder: '이름', q: '대상자의 이름을 알려주세요.' },
+      { id: 'name', label: '이름', type: 'text', placeholder: '이름', q: '사용자의 이름을 알려주세요.' },
       {
         id: 'age', label: '나이 (연령대)', type: 'choice', q: '연령대가 어떻게 되세요?',
         options: [
@@ -138,8 +138,7 @@ window.SHData = (function () {
         id: 'os', label: '스마트폰 사용시 OS', type: 'choice', q: '어떤 스마트폰을 쓰세요?',
         options: [
           { value: 'android', label: '안드로이드' },
-          { value: 'ios', label: 'iOS (애플)' },
-          { value: 'none', label: '없음' }
+          { value: 'ios', label: '애플(아이폰)' }
         ]
       },
       {

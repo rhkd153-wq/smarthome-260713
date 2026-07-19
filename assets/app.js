@@ -265,6 +265,13 @@
     return s;
   }
 
+  // 게임 화면 상단 우측 '초기화' 버튼
+  function gameTopbar() {
+    return el('div', { class: 'game-topbar' }, [
+      el('button', { class: 'reset-chip', type: 'button', onclick: resetAll }, ['↺ 초기화'])
+    ]);
+  }
+
   function renderProgressHero(screen) {
     var level = STEP_LEVEL[screen] || 0;
     return el('div', { class: 'card progress-hero' }, [
@@ -781,6 +788,7 @@
 
   function renderSpacesHub() {
     var container = el('div', {}, []);
+    container.appendChild(gameTopbar());
     // 홈스 안내
     container.appendChild(el('div', { class: 'npc-row' }, [
       el('div', { class: 'npc-face' }, ['🤖']),
@@ -837,6 +845,7 @@
     var value = state.performance[key];
 
     var container = el('div', {}, []);
+    container.appendChild(gameTopbar());
     // 진행 표시
     container.appendChild(el('div', { class: 'pq-top' }, [
       el('span', { class: 'pq-count' }, [space.label + ' · ' + (idx + 1) + ' / ' + total]),
@@ -902,7 +911,11 @@
   function personalQuestions() {
     var list = [];
     D.personalAbility.fields.forEach(function (f) { list.push({ f: f, store: 'personal' }); });
-    D.environment.fields.forEach(function (f) { list.push({ f: f, store: 'environment' }); });
+    D.environment.fields.forEach(function (f) {
+      // 스마트폰이 없으면 OS 질문은 생략
+      if (f.id === 'os' && state.environment.smartphone === 'no') return;
+      list.push({ f: f, store: 'environment' });
+    });
     return list;
   }
 
@@ -930,6 +943,7 @@
         break;
       case 'iotExperience':
         if (value === 'none') return 'IoT가 처음이시면 설정이 쉬운 초보자 키트부터 시작하는 걸 추천해요! 🌱';
+        if (value === 'tried') return '직접 쓰진 않았지만 설치된 걸 사용해본 경험이 있으시군요. 초보자 키트를 추천해요! 🌱';
         if (value === 'using') return '이미 IoT를 쓰고 계시니 허브·자동화까지 확장해볼 수 있어요.';
         break;
       case 'ecosystem':
@@ -940,7 +954,30 @@
         if (value.indexOf('kt') > -1) tips.push('KT → 기가지니도 활용 가능');
         return tips.length ? ('보유하신 브랜드에 맞춰 추천해요: ' + tips.join(' · ') + '.') : null;
       case 'indoorMobility':
-        if (value === 'unable') return '이동이 어려우면 동작·재실 센서로 자동 제어를 넣으면 편해요.';
+        if (value === 'good') return '잘 이동하고 계시는군요, 멋져요! 👏 그래도 스마트 홈으로 조명·문을 자동화하면 더 편하고 안전해져요.';
+        if (value === 'assisted') return '이동이 조금 어려우시군요. 동작·재실 센서로 조명이 자동으로 켜지거나, 문·커튼을 음성·리모컨으로 열면 이동 부담을 크게 줄일 수 있어요.';
+        if (value === 'unable') return '이동이 어려우면 동작·재실 센서와 자동화로 굳이 움직이지 않아도 되게 만들 수 있어요.';
+        break;
+      case 'discomfort':
+        if (value === 'yes') return '불편함을 느끼시는군요. 그렇다면 스마트 홈 솔루션을 적용해봅시다! 💪';
+        if (value === 'no') return '불편함이 없으시군요. 그럼에도 스마트 홈을 원하시는 이유가 있을 텐데, 꼭 평가자에게 알려주세요.';
+        break;
+      case 'smartphone':
+        if (value === 'yes') return '스마트폰이 있으시군요! 스마트 홈을 스스로 쓰려면 꼭 필요해요.';
+        if (value === 'no') return '스마트폰은 스마트 홈을 설정·조작하는 데 필요해요. 없으면 평가자가 대신 설정·확인하는 것에 동의하셔야 합니다.';
+        break;
+      case 'household':
+        if (value === 'alone') return '독거시면 본인 스타일에 딱 맞게 설정하기 좋아요.';
+        if (value === 'couple') return '부부가 함께 지내시는군요. 배우자의 생활 패턴도 평가자에게 꼭 알려주세요.';
+        if (value === 'other') return '다른 가족과 함께 지내시는군요. 가족들이 불편하지 않도록 가족 면담도 필요해요. 동의하시면 계속 진행해요.';
+        break;
+      case 'housing':
+        if (value === 'detached') return '단독주택은 전기·배선 노후 정도에 따라 조명 스위치 연결이 어려울 수 있어요. 확인이 필요해요.';
+        if (value === 'apartment') return '아파트는 인터넷 모뎀과 조명 스위치 상태 확인이 필요해요.';
+        if (value === 'other') return '집 상태에 따라 배선·인터넷을 점검해야 해요.';
+        break;
+      case 'controlPanel':
+        if (Array.isArray(value) && value.length) return '기존 통합 제어판이 있군요! 새로 구성할 스마트 홈 에코시스템과 통합·연동이 되는지 확인해야 해요.';
         break;
     }
     return null;
@@ -957,6 +994,7 @@
     var value = store[f.id];
 
     var container = el('div', {}, []);
+    container.appendChild(gameTopbar());
     // 진행 표시
     container.appendChild(el('div', { class: 'pq-top' }, [
       el('span', { class: 'pq-count' }, ['개인 능력 · ' + (qi + 1) + ' / ' + total]),
