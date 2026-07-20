@@ -33,6 +33,7 @@
       personal: {},          // { fieldId: value }  (controlPanel 은 배열)
       environment: {},
       performance: {},       // { 'spaceId::taskId::activityId': 0|1|2|3 } (기준선)
+      envCheck: {},          // { 'spaceId::itemId': 'yes'|'no' } 공간별 환경수정 체크
       followup: {}           // { '1'|'2'|'3'|'4': { key: 0|1|2|3 } } 주차별 재평가
     };
   }
@@ -63,7 +64,7 @@
     return JSON.parse(JSON.stringify({
       meta: state.meta, currentActivity: state.currentActivity, needs: state.needs,
       personal: state.personal, environment: state.environment, performance: state.performance,
-      followup: state.followup
+      envCheck: state.envCheck, followup: state.followup
     }));
   }
   // 현재 평가를 기록에 저장(있으면 갱신)
@@ -85,7 +86,7 @@
     if (!rec) return;
     var fresh = blankState();
     var snap = rec.snapshot || {};
-    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance', 'followup'].forEach(function (k) {
+    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance', 'envCheck', 'followup'].forEach(function (k) {
       if (snap[k] != null) fresh[k] = snap[k];
     });
     var mDefaults = blankState().meta;
@@ -835,17 +836,26 @@
   /* =========================================================
    * 화면 : 공간별 활동 평가 (한 활동씩, 문스 안내)
    * =======================================================*/
+  // 공간 위저드 시퀀스 = 활동 수행도(activity) + 환경수정 체크(env)
+  function spaceSequence(spaceId) {
+    var seq = spaceEvalItems(spaceId).map(function (it) {
+      return { type: 'activity', task: it.task, activity: it.activity };
+    });
+    (D.environmentChecklist[spaceId] || []).forEach(function (item) {
+      seq.push({ type: 'env', item: item });
+    });
+    return seq;
+  }
+
   function renderSpaceEval() {
     var spaceId = state.meta.evalSpace;
     var space = D.spaces.filter(function (s) { return s.id === spaceId; })[0];
     if (!space) { go('spaces'); return; }
-    var items = spaceEvalItems(spaceId);
-    var total = items.length;
+    var seq = spaceSequence(spaceId);
+    var total = seq.length;
     var idx = Math.max(0, Math.min(state.meta.spaceStep || 0, total - 1));
     state.meta.spaceStep = idx;
-    var it = items[idx];
-    var key = perfKey(spaceId, it.task.id, it.activity.id);
-    var value = state.performance[key];
+    var it = seq[idx];
 
     var container = el('div', {}, []);
     container.appendChild(gameTopbar());
@@ -856,36 +866,71 @@
         el('div', { class: 'pq-progress-fill', style: 'width:' + Math.round((idx + 1) / total * 100) + '%' }, [])
       ])
     ]));
-    // 문스 질문
-    container.appendChild(el('div', { class: 'npc-row' }, [
-      el('div', { class: 'npc-face' }, ['🤖']),
-      el('div', { class: 'npc-bubble' }, [
-        el('b', {}, ['문스']), ' · ',
-        el('span', { class: 'se-task' }, [space.label + ' · ' + it.task.label]),
-        el('br', {}, []),
-        '‘' + it.activity.label + '’은(는) 어떻게 하세요?'
-      ])
-    ]));
-    // 수행 정도 선택 (큰 버튼)
-    var card = el('div', { class: 'card pq-card' }, [
-      choiceGroup(
-        D.performanceScale.options.map(function (o) { return { value: o.value, label: o.word }; }),
-        value,
-        function (v) { state.performance[key] = (state.performance[key] === v) ? undefined : v; render(); }
-      )
-    ]);
-    container.appendChild(card);
-    // 문스 피드백 (제한이면 격려)
-    if (value === 1 || value === 2) {
-      container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
-        el('div', { class: 'npc-face' }, ['💡']),
-        el('div', { class: 'npc-bubble' }, ['이 활동은 스마트 홈으로 도울 수 있어요! 마지막에 딱 맞는 기기를 찾아드릴게요.'])
+
+    if (it.type === 'activity') {
+      var key = perfKey(spaceId, it.task.id, it.activity.id);
+      var value = state.performance[key];
+      container.appendChild(el('div', { class: 'npc-row' }, [
+        el('div', { class: 'npc-face' }, ['🤖']),
+        el('div', { class: 'npc-bubble' }, [
+          el('b', {}, ['문스']), ' · ',
+          el('span', { class: 'se-task' }, [space.label + ' · ' + it.task.label]),
+          el('br', {}, []),
+          '‘' + it.activity.label + '’은(는) 어떻게 하세요?'
+        ])
       ]));
-    } else if (value === 3) {
-      container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
-        el('div', { class: 'npc-face' }, ['👍']),
-        el('div', { class: 'npc-bubble' }, ['스스로 잘 하고 계시네요! 이건 그대로 두어도 좋아요.'])
+      container.appendChild(el('div', { class: 'card pq-card' }, [
+        choiceGroup(
+          D.performanceScale.options.map(function (o) { return { value: o.value, label: o.word }; }),
+          value,
+          function (v) { state.performance[key] = (state.performance[key] === v) ? undefined : v; render(); }
+        )
       ]));
+      if (value === 1 || value === 2) {
+        container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+          el('div', { class: 'npc-face' }, ['💡']),
+          el('div', { class: 'npc-bubble' }, ['이 활동은 스마트 홈으로 도울 수 있어요! 마지막에 딱 맞는 기기를 찾아드릴게요.'])
+        ]));
+      } else if (value === 3) {
+        container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+          el('div', { class: 'npc-face' }, ['👍']),
+          el('div', { class: 'npc-bubble' }, ['스스로 잘 하고 계시네요! 이건 그대로 두어도 좋아요.'])
+        ]));
+      }
+    } else {
+      // 환경수정 체크 (예/아니오)
+      var ekey = spaceId + '::' + it.item.id;
+      var eval2 = state.envCheck[ekey];
+      container.appendChild(el('div', { class: 'npc-row' }, [
+        el('div', { class: 'npc-face' }, ['🤖']),
+        el('div', { class: 'npc-bubble' }, [
+          el('b', {}, ['문스']), ' · ',
+          el('span', { class: 'se-task' }, [space.label + ' · 환경 안전 점검']),
+          el('br', {}, []),
+          it.item.q
+        ])
+      ]));
+      container.appendChild(el('div', { class: 'card pq-card' }, [
+        choiceGroup(
+          [{ value: 'yes', label: '예, 해당돼요' }, { value: 'no', label: '아니요' }],
+          eval2,
+          function (v) { state.envCheck[ekey] = (state.envCheck[ekey] === v) ? undefined : v; render(); }
+        )
+      ]));
+      if (eval2 === 'yes') {
+        container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+          el('div', { class: 'npc-face' }, ['🧰']),
+          el('div', { class: 'npc-bubble' }, [
+            el('b', {}, ['추천: ' + it.item.tool]), el('br', {}, []),
+            it.item.apply, ' ', el('span', { class: 'tip-tail' }, ['— 최종 솔루션에 담아둘게요!'])
+          ])
+        ]));
+      } else if (eval2 === 'no') {
+        container.appendChild(el('div', { class: 'npc-row npc-tip' }, [
+          el('div', { class: 'npc-face' }, ['👍']),
+          el('div', { class: 'npc-bubble' }, ['좋아요, 이 부분은 문제 없네요.'])
+        ]));
+      }
     }
 
     app.innerHTML = '';
@@ -1839,6 +1884,9 @@
     /* [설계도] 공간별 로우테크 환경수정 */
     if (limited.length > 0) sec('plan', renderLowtechCard(limited));
 
+    /* [설계도] 환경 안전·수정 (현장 점검에서 선택된 항목) */
+    if (collectEnvChecks().length > 0) sec('plan', renderEnvCheckCard());
+
     /* [기기·구매] 키트 구성 */
     if (limited.length > 0) sec('buy', renderKitCard(limited, rec));
     /* [기기·구매] 권장 플랫폼 및 기존 가전 활용 */
@@ -2123,6 +2171,50 @@
       card.appendChild(block);
     });
     if (!any) card.appendChild(el('div', { class: 'empty-state' }, ['제한 활동이 있는 공간이 없습니다.']));
+    return card;
+  }
+
+  // 선택된(예) 환경수정 항목을 최종 솔루션으로 묶는 카드
+  function collectEnvChecks() {
+    var out = [];
+    D.spaces.forEach(function (space) {
+      var items = D.environmentChecklist[space.id] || [];
+      items.forEach(function (item) {
+        if (state.envCheck[space.id + '::' + item.id] === 'yes') {
+          out.push({ space: space, item: item });
+        }
+      });
+    });
+    return out;
+  }
+
+  function renderEnvCheckCard() {
+    var picks = collectEnvChecks();
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['환경 안전 · 수정 (현장 점검)']),
+      el('p', { class: 'section-guide' }, ['공간별 점검에서 "해당됨"으로 확인한 항목입니다. 추천 도구를 최종 솔루션에 함께 반영하세요.'])
+    ]);
+    if (picks.length === 0) {
+      card.appendChild(el('div', { class: 'empty-state' }, ['체크된 환경수정 항목이 없습니다. 공간 평가에서 환경 안전 점검에 응답하면 여기에 모입니다.']));
+      return card;
+    }
+    var bySpace = {};
+    picks.forEach(function (p) { (bySpace[p.space.id] = bySpace[p.space.id] || []).push(p); });
+    D.spaces.forEach(function (space) {
+      var rows = bySpace[space.id];
+      if (!rows) return;
+      var block = el('div', { class: 'lt-space' }, [
+        el('div', { class: 'sp-title' }, [space.label + ' (' + rows.length + ')'])
+      ]);
+      rows.forEach(function (p) {
+        block.appendChild(el('div', { class: 'envc-item' }, [
+          el('div', { class: 'envc-q' }, ['✔ ' + p.item.q]),
+          el('div', { class: 'envc-tool' }, [el('span', { class: 'lt-tag' }, ['도구']), ' ', p.item.tool]),
+          el('div', { class: 'lt-why' }, [p.item.apply])
+        ]));
+      });
+      card.appendChild(block);
+    });
     return card;
   }
 

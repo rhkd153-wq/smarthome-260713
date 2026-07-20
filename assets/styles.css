@@ -1047,6 +1047,15 @@ body.splash-mode main { padding: 0; max-width: 100%; }
   .an-step-skills { margin-left: 0; width: 100%; }
 }
 
+/* 환경 안전·수정 (선택된 항목) */
+.envc-item {
+  border: 1px solid var(--line); border-left: 3px solid var(--primary);
+  border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; background: #fff8f2;
+}
+.envc-q { font-weight: 700; font-size: 0.9rem; color: var(--primary-dark); }
+.envc-tool { font-size: 0.86rem; font-weight: 600; margin: 4px 0 2px; }
+.tip-tail { color: var(--primary-dark); font-weight: 700; }
+
 /* OTPF 근거 표 */
 .ref-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ref-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 480px; }
