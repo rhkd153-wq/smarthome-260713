@@ -757,8 +757,6 @@ window.SHData = (function () {
       why: '물기로 미끄러지는 것을 막아 안전하게 이동·기립하게 합니다.', supports: ['걷기', '자세 유지'] },
     { id: 'shower-chair', name: '목욕의자(샤워체어)', spaces: ['bathroom'],
       why: '앉아서 씻어 서 있는 부담과 피로를 줄입니다.', supports: ['자세 유지', '지구력'] },
-    { id: 'big-rocker-switch', name: '큰 로커형 스위치판', spaces: ['전체'],
-      why: '손끝 대신 손등·팔로도 누를 수 있는 넓은 스위치로 조작을 쉽게 합니다.', supports: ['쥐기·집기', '조작하기', '힘 조절'] },
     { id: 'big-remote', name: '대형 버튼 리모컨 · 버튼 키가드', spaces: ['living', 'bedroom'],
       why: '버튼이 크고 오작동을 줄여 정확히 누를 수 있습니다.', supports: ['조작하기', '쥐기·집기'] },
     { id: 'lower-switch', name: '스위치·콘센트 높이 조정(하향 이설)', spaces: ['전체'],
@@ -829,18 +827,18 @@ window.SHData = (function () {
    * 기술 태그 교집합 대신 이 큐레이션을 우선 사용해 오매칭을 막는다. */
   var activityLowtech = {
     shoes:       ['fold-chair', 'long-shoehorn', 'reacher', 'grab-bar'],
-    unlock:      ['big-rocker-switch', 'lower-switch'],
+    unlock:      ['lower-switch'],
     door:        ['lever-handle', 'threshold-ramp', 'grab-bar'],
-    security:    ['big-rocker-switch', 'lower-switch'],
-    bell:        ['lower-switch', 'big-rocker-switch'],
-    lightswitch: ['big-rocker-switch', 'lower-switch', 'nightlight'],
+    security:    ['lower-switch'],
+    bell:        ['lower-switch'],
+    lightswitch: ['lower-switch', 'nightlight'],
     moodlight:   ['big-remote', 'reacher'],
     curtain:     ['curtain-wand', 'reacher'],
-    poweroff:    ['big-rocker-switch', 'lower-switch', 'reacher'],
+    poweroff:    ['lower-switch', 'reacher'],
     tvac:        ['big-remote'],
-    heating:     ['big-rocker-switch', 'lower-switch'],
+    heating:     ['lower-switch'],
     bed:         ['big-remote', 'bed-rail'],
-    fan:         ['lower-switch', 'big-rocker-switch', 'reacher']
+    fan:         ['lower-switch', 'reacher']
   };
 
   return {
