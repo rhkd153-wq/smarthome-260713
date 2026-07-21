@@ -2036,8 +2036,16 @@
     return need;
   }
 
-  // 이 활동에 맞는 로우테크 항목(공간 + 막힌/필요 기술 교집합)
+  // 이 활동에 맞는 로우테크 항목
+  //  - 활동별 큐레이션(activityLowtech)이 있으면 그것을 사용(임상적 적합성 보장)
+  //  - 없으면 공간 + 막힌/필요 기술 교집합으로 대체
   function lowtechForActivity(r, blocked) {
+    var curated = D.activityLowtech[r.activity.id];
+    if (curated) {
+      var byId = {};
+      D.lowtechCatalog.forEach(function (it) { byId[it.id] = it; });
+      return curated.map(function (id) { return byId[id]; }).filter(Boolean);
+    }
     var need = activityNeededSkills(r.activity.id);
     var blockedList = Object.keys(need).filter(function (s) { return blocked[s]; });
     var target = blockedList.length ? blockedList : Object.keys(need);

@@ -825,7 +825,26 @@ window.SHData = (function () {
     ]
   };
 
+  /* 활동별로 임상적으로 적합한 로우테크(카탈로그 id) — 이 목록이 있으면
+   * 기술 태그 교집합 대신 이 큐레이션을 우선 사용해 오매칭을 막는다. */
+  var activityLowtech = {
+    shoes:       ['fold-chair', 'long-shoehorn', 'reacher', 'grab-bar'],
+    unlock:      ['big-rocker-switch', 'lower-switch'],
+    door:        ['lever-handle', 'threshold-ramp', 'grab-bar'],
+    security:    ['big-rocker-switch', 'lower-switch'],
+    bell:        ['lower-switch', 'big-rocker-switch'],
+    lightswitch: ['big-rocker-switch', 'lower-switch', 'nightlight'],
+    moodlight:   ['big-remote', 'reacher'],
+    curtain:     ['curtain-wand', 'reacher'],
+    poweroff:    ['big-rocker-switch', 'lower-switch', 'reacher'],
+    tvac:        ['big-remote'],
+    heating:     ['big-rocker-switch', 'lower-switch'],
+    bed:         ['big-remote', 'bed-rail'],
+    fan:         ['lower-switch', 'big-rocker-switch', 'reacher']
+  };
+
   return {
+    activityLowtech: activityLowtech,
     environmentChecklist: environmentChecklist,
     otpfPrinciple: otpfPrinciple,
     performanceSkillRef: performanceSkillRef,
