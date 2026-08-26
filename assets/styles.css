@@ -1056,6 +1056,50 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .envc-tool { font-size: 0.86rem; font-weight: 600; margin: 4px 0 2px; }
 .tip-tail { color: var(--primary-dark); font-weight: 700; }
 
+/* =========================================================
+ * 낙상위험 모듈
+ * =======================================================*/
+.fall-badge-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fall-badge {
+  display: inline-block; font-weight: 800; font-size: 0.92rem;
+  padding: 5px 14px; border-radius: 999px; color: #fff;
+}
+.fall-badge.fall-low { background: #2f9d63; }
+.fall-badge.fall-mid { background: #e08a00; }
+.fall-badge.fall-high { background: #d64541; }
+.fall-engine-note { font-size: 0.72rem; color: var(--muted); }
+.fall-rationale { margin: 8px 0 0; font-size: 0.86rem; color: var(--text); }
+.fall-score-chip {
+  font-size: 0.76rem; font-weight: 700; color: #4a5568;
+  background: #eef2f6; padding: 3px 10px; border-radius: 999px;
+}
+.fall-reasons {
+  margin-top: 10px; font-size: 0.84rem; line-height: 1.6;
+  background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+}
+.fall-sub { font-size: 0.8rem; font-weight: 800; color: var(--primary-dark); margin: 14px 0 6px; }
+.fall-bars { display: flex; flex-direction: column; gap: 5px; }
+.fall-bar-row { display: flex; align-items: center; gap: 8px; }
+.fall-bar-label { flex: 0 0 96px; font-size: 0.78rem; font-weight: 600; text-align: right; }
+.fall-bar-track { flex: 1; height: 12px; background: #eef2f6; border-radius: 999px; overflow: hidden; }
+.fall-bar-fill { height: 100%; background: linear-gradient(90deg, #e08a00, #d64541); border-radius: 999px; }
+.fall-bar-fill.zero { background: transparent; }
+.fall-bar-score { flex: 0 0 40px; font-size: 0.74rem; font-weight: 700; color: var(--muted); }
+.fall-tag {
+  font-size: 0.64rem; font-weight: 800; color: #fff;
+  background: #d64541; padding: 1px 7px; border-radius: 999px;
+}
+.fall-mini {
+  font-size: 0.66rem; font-weight: 800; color: #a03530;
+  background: #fdecec; padding: 1px 7px; border-radius: 999px; margin-left: 4px;
+}
+.lowtech-item.fall-rec { border-left-color: #d64541; background: #fdf7f7; }
+.fall-track-row { margin-bottom: 8px; }
+.fall-track-note { margin-top: 10px; }
+@media (max-width: 560px) {
+  .fall-bar-label { flex-basis: 78px; font-size: 0.72rem; }
+}
+
 /* OTPF 근거 표 */
 .ref-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ref-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 480px; }

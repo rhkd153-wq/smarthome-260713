@@ -498,7 +498,11 @@ window.SHData = (function () {
     '스마트 에어컨': 'beginner',
     '스마트 공기청정기': 'beginner',
     '스마트 가습기': 'beginner',
+    '모션 센서 야간등': 'beginner',
+    '낙상 감지 스마트워치': 'beginner',
+    '스마트 버튼(비상호출)': 'beginner',
     // 숙련자 키트 (허브·센서·자동화)
+    '침대 이탈 센서': 'advanced',
     '스마트 허브': 'advanced',
     '스마트 스위치': 'advanced',
     '스마트 잠금장치': 'advanced',
@@ -540,7 +544,11 @@ window.SHData = (function () {
     '스마트 공기청정기': 'wifi',
     '스마트 체중계': 'wifi',
     '스마트 펫 음식조절기': 'wifi',
-    '스윙식 자동문': 'wifi'
+    '스윙식 자동문': 'wifi',
+    '모션 센서 야간등': 'wifi',
+    '낙상 감지 스마트워치': 'ble',
+    '스마트 버튼(비상호출)': 'hub_zigbee',
+    '침대 이탈 센서': 'hub_zigbee'
   };
   // 연결 방식 그룹 설명
   var connectivityInfo = {
@@ -841,7 +849,118 @@ window.SHData = (function () {
     fan:         ['lower-switch', 'reacher']
   };
 
+  /* =========================================================
+   * 낙상위험 모듈 (근거 기반 규칙 엔진 · 비학습형)
+   *  - 환경 안전 점검 34항목에 낙상위험 메타(영역·가중치)를 태깅
+   *  - 영역 구분은 HOME FAST 등 국제 낙상위험 환경평가 도구의
+   *    영역 분류를 "참고"한 자체 분류 (도구 문항 복제 아님)
+   *  - weight 2 = 고위험(문턱·미끄럼·야간조명 부재·욕실 안전바
+   *    부재·보행 불안정), 1 = 일반, 미등재 = 낙상 무관(제외)
+   * =======================================================*/
+  var fallDomains = ['바닥·문턱', '조명', '가구·배치', '욕실·화장실', '이동·보행보조', '수납·손닿음', '기타'];
+  var fallRiskMeta = {
+    // 현관
+    'ent-threshold': { domain: '바닥·문턱', weight: 2 },
+    'ent-door':      { domain: '기타', weight: 1 },
+    'ent-dark':      { domain: '조명', weight: 2 },
+    'ent-slip':      { domain: '바닥·문턱', weight: 2 },
+    'ent-shoes':     { domain: '이동·보행보조', weight: 2 },
+    'ent-wheel':     { domain: '바닥·문턱', weight: 1 },
+    // 화장실 (bath-urine 은 낙상 환경요인 아님 → 제외)
+    'bath-toilet':   { domain: '욕실·화장실', weight: 2 },
+    'bath-slip':     { domain: '욕실·화장실', weight: 2 },
+    'bath-dark':     { domain: '조명', weight: 1 },
+    'bath-storage':  { domain: '수납·손닿음', weight: 1 },
+    'bath-bar':      { domain: '욕실·화장실', weight: 2 },
+    'bath-shower':   { domain: '욕실·화장실', weight: 1 },
+    'bath-grab':     { domain: '욕실·화장실', weight: 2 },
+    'bath-chair':    { domain: '욕실·화장실', weight: 1 },
+    // 침실 (bed-cloth 는 낙상 무관 → 제외)
+    'bed-standrail': { domain: '이동·보행보조', weight: 2 },
+    'bed-riserail':  { domain: '이동·보행보조', weight: 1 },
+    'bed-nightlight':{ domain: '조명', weight: 2 },
+    'bed-storage':   { domain: '수납·손닿음', weight: 1 },
+    'bed-kit':       { domain: '기타', weight: 1 },
+    'bed-chair':     { domain: '가구·배치', weight: 1 },
+    // 거실/부엌 (liv-handle·liv-window·liv-gas 는 낙상 무관 → 제외)
+    'liv-drag':      { domain: '이동·보행보조', weight: 2 },
+    'liv-reach':     { domain: '이동·보행보조', weight: 2 },
+    'liv-footmark':  { domain: '바닥·문턱', weight: 1 },
+    'liv-switch':    { domain: '조명', weight: 1 },
+    'liv-fall':      { domain: '이동·보행보조', weight: 2 },
+    'liv-wire':      { domain: '바닥·문턱', weight: 2 },
+    'liv-cane':      { domain: '이동·보행보조', weight: 2 },
+    'liv-sink':      { domain: '가구·배치', weight: 1 },
+    'liv-table':     { domain: '가구·배치', weight: 1 }
+  };
+
+  /* 개인 낙상위험 요인 문항 (개인 능력 위저드에 삽입) */
+  var fallPersonal = {
+    id: 'fallPersonal',
+    title: '낙상위험 요인',
+    fields: [
+      {
+        id: 'fallHistory', label: '지난 1년 낙상 이력', type: 'choice', q: '지난 1년간 넘어진 적이 있나요?',
+        options: [
+          { value: 'none', label: '없음' },
+          { value: 'one', label: '1회' },
+          { value: 'more', label: '2회 이상' }
+        ]
+      },
+      {
+        id: 'fallFear', label: '낙상 두려움으로 인한 활동 제한', type: 'choice', q: '넘어질까 봐 걱정되어 활동을 줄인 적이 있나요?',
+        options: [
+          { value: 'none', label: '없음' },
+          { value: 'sometimes', label: '가끔' },
+          { value: 'often', label: '자주' }
+        ]
+      },
+      {
+        id: 'nightTrips', label: '야간 이동 횟수', type: 'choice', q: '밤에 화장실 등으로 이동하는 횟수는 어떻게 되나요?',
+        options: [
+          { value: 'none', label: '거의 없음' },
+          { value: 'few', label: '1~2회' },
+          { value: 'many', label: '3회 이상' }
+        ]
+      },
+      {
+        id: 'fallHealth', label: '낙상 관련 건강요인', type: 'multi', q: '어지럼 · 기립성 저혈압 · 시력 저하 중 해당되는 것이 있나요? (여러 개 선택)',
+        options: [
+          { value: 'dizzy', label: '어지럼' },
+          { value: 'ortho', label: '기립성 저혈압' },
+          { value: 'vision', label: '시력 저하' },
+          { value: 'none', label: '없음' }
+        ]
+      }
+    ]
+  };
+
+  /* 낙상위험 판정 임계값 — 여기 한 곳에서 조정
+   *  개인 점수(만점 14): 이력0/1/2 + 두려움0/1/2 + 야간이동0/1/2
+   *   + 건강요인 개수(0~3) + 실내보행0/1/2 + 연령(70대+1·80대+2) + 지체·뇌병변+1
+   *  환경 점수(만점 44): "예" 항목 weight 합 */
+  var FALL_THRESHOLDS = {
+    personal: { mid: 4, high: 8 },   // 개인: 0-3 낮음 / 4-7 중간 / 8+ 높음
+    env:      { mid: 6, high: 13 }   // 환경: 0-5 낮음 / 6-12 중간 / 13+ 높음
+    // 종합 = 두 등급 중 높은 쪽. 상향 규칙:
+    //  ① 낙상 이력 2회 이상 → 높음
+    //  ② 이력 1회 + 고위험(w2) 환경 항목 "예" 1개 이상 → 높음
+    //  ③ 개인·환경 둘 다 중간 → 높음
+  };
+
+  /* 낙상예방 교육 항목 (등급 중간 이상 또는 예방 기기 추천 시) */
+  var fallEduItems = [
+    { id: 'fall-light', text: '[낙상예방] 야간 자동 조명 사용법: 밤에 일어나면 불이 저절로 켜지는지 함께 확인하기' },
+    { id: 'fall-sos', text: '[낙상예방] 비상 호출 연습: 스피커 SOS 음성 명령 또는 비상 버튼을 실제로 눌러보기' },
+    { id: 'fall-slip', text: '[낙상예방] 미끄럼방지 관리: 매트 밀림·물기·전선 정리를 주 1회 점검하기' }
+  ];
+
   return {
+    fallDomains: fallDomains,
+    fallRiskMeta: fallRiskMeta,
+    fallPersonal: fallPersonal,
+    FALL_THRESHOLDS: FALL_THRESHOLDS,
+    fallEduItems: fallEduItems,
     activityLowtech: activityLowtech,
     environmentChecklist: environmentChecklist,
     otpfPrinciple: otpfPrinciple,

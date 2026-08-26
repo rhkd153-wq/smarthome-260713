@@ -34,7 +34,9 @@
       environment: {},
       performance: {},       // { 'spaceId::taskId::activityId': 0|1|2|3 } (기준선)
       envCheck: {},          // { 'spaceId::itemId': 'yes'|'no' } 공간별 환경수정 체크
-      followup: {}           // { '1'|'2'|'3'|'4': { key: 0|1|2|3 } } 주차별 재평가
+      followup: {},          // { '1'|'2'|'3'|'4': { key: 0|1|2|3 } } 주차별 재평가
+      fallRisk: null,        // 낙상위험 판정 결과 (평탄 키, 결과 화면 도달 시 산출·저장)
+      fallTrack: {}          // { '1'|'2'|'3'|'4': 0|1|2 } 주차별 낙상 발생 횟수(2=2회 이상)
     };
   }
   var state = blankState();
@@ -64,7 +66,8 @@
     return JSON.parse(JSON.stringify({
       meta: state.meta, currentActivity: state.currentActivity, needs: state.needs,
       personal: state.personal, environment: state.environment, performance: state.performance,
-      envCheck: state.envCheck, followup: state.followup
+      envCheck: state.envCheck, followup: state.followup,
+      fallRisk: state.fallRisk, fallTrack: state.fallTrack
     }));
   }
   // 현재 평가를 기록에 저장(있으면 갱신)
@@ -86,7 +89,7 @@
     if (!rec) return;
     var fresh = blankState();
     var snap = rec.snapshot || {};
-    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance', 'envCheck', 'followup'].forEach(function (k) {
+    ['meta', 'currentActivity', 'needs', 'personal', 'environment', 'performance', 'envCheck', 'followup', 'fallRisk', 'fallTrack'].forEach(function (k) {
       if (snap[k] != null) fresh[k] = snap[k];
     });
     var mDefaults = blankState().meta;
@@ -959,6 +962,8 @@
   function personalQuestions() {
     var list = [];
     D.personalAbility.fields.forEach(function (f) { list.push({ f: f, store: 'personal' }); });
+    // 낙상위험 개인요인 (낙상위험 모듈)
+    D.fallPersonal.fields.forEach(function (f) { list.push({ f: f, store: 'personal' }); });
     D.environment.fields.forEach(function (f) {
       // 스마트폰이 없으면 OS 질문은 생략
       if (f.id === 'os' && state.environment.smartphone === 'no') return;
@@ -1005,6 +1010,25 @@
         if (value === 'good') return '잘 이동하고 계시는군요, 멋져요! 👏 그래도 스마트 홈으로 조명·문을 자동화하면 더 편하고 안전해져요.';
         if (value === 'assisted') return '이동이 조금 어려우시군요. 동작·재실 센서로 조명이 자동으로 켜지거나, 문·커튼을 음성·리모컨으로 열면 이동 부담을 크게 줄일 수 있어요.';
         if (value === 'unable') return '이동이 어려우면 동작·재실 센서와 자동화로 굳이 움직이지 않아도 되게 만들 수 있어요.';
+        break;
+      case 'fallHistory':
+        if (value === 'none') return '넘어진 적이 없으시군요, 다행이에요! 그래도 예방이 최고예요. 🛡️';
+        if (value === 'one') return '한 번 넘어진 경험이 있으면 다시 넘어질 위험이 높아져요. 환경을 꼼꼼히 점검할게요.';
+        if (value === 'more') return '2회 이상은 고위험 신호예요. 낙상예방 환경수정을 꼭 함께 계획해요!';
+        break;
+      case 'fallFear':
+        if (value === 'none') return '두려움 없이 활동하고 계시는군요, 좋아요! 👍';
+        if (value === 'sometimes') return '두려움으로 활동을 줄이면 근력이 약해져 오히려 위험할 수 있어요. 안전한 환경으로 자신감을 되찾아요.';
+        if (value === 'often') return '활동을 자주 줄이실 정도군요. 조명·손잡이 등 환경을 바꾸면 두려움을 크게 줄일 수 있어요!';
+        break;
+      case 'nightTrips':
+        if (value === 'none') return '야간 이동이 거의 없으시군요. 그래도 야간등 하나면 더 안심이에요.';
+        if (value === 'few') return '밤에 1~2회 움직이시네요. 발밑을 밝혀주는 모션 센서 야간등을 추천할게요! 💡';
+        if (value === 'many') return '야간 이동이 잦으면 낙상 위험이 크게 올라가요. 침실→화장실 동선 자동 조명이 꼭 필요해요!';
+        break;
+      case 'fallHealth':
+        if (value.indexOf && value.indexOf('none') > -1 && value.length === 1) return '건강요인은 없으시군요, 좋아요!';
+        if (value.length > 0) return '어지럼·저혈압·시력 저하는 낙상과 직접 관련돼요. 일어날 때 잠시 멈췄다 움직이는 습관도 도움이 돼요.';
         break;
       case 'discomfort':
         if (value === 'yes') return '불편함을 느끼시는군요. 그렇다면 스마트 홈 솔루션을 적용해봅시다! 💪';
@@ -1596,6 +1620,13 @@
       { id: 'as', text: 'A/S 문의처와 무상 보증 기간 확인' }
     ];
     if (hasBLE) items.splice(3, 0, { id: 'battery', text: 'BLE(블루투스) 기기 건전지 주기적으로 교체하기' });
+    // 낙상예방 교육 (등급 중간 이상 또는 예방 기기 추천 시)
+    if (hasFallData()) {
+      var fallForEdu = computeFallRisk();
+      if (fallForEdu.grade !== 'low' || computeFallRecs(fallForEdu, rec).length > 0) {
+        D.fallEduItems.forEach(function (fe) { items.push(fe); });
+      }
+    }
 
     var card = el('div', { class: 'card' }, [
       el('h3', {}, ['사용자 교육 (제공 시 함께 진행)']),
@@ -1666,6 +1697,18 @@
       stat(toIndep, '스스로 달성 🎉')
     ]));
 
+    // 주차별 낙상 발생 기록 요약 (낙상위험 모듈)
+    var fallWeeks = ['1', '2', '3', '4'].filter(function (w) { return state.fallTrack[w] != null; });
+    if (fallWeeks.length) {
+      card.appendChild(el('div', { class: 'note fall-track-note' }, [
+        el('strong', {}, ['낙상 발생 기록: ']),
+        fallWeeks.map(function (w) {
+          var v = state.fallTrack[w];
+          return w + '주 ' + (v === 0 ? '없음' : (v === 1 ? '1회' : '2회 이상'));
+        }).join(' · ')
+      ]));
+    }
+
     // 주차 선택 (기준 + 1~4주)
     var week = state.meta.trackWeek || 'base';
     card.appendChild(el('div', { class: 'week-tabs' }, TRACK_WEEKS.map(function (w) {
@@ -1681,6 +1724,18 @@
     } else {
       card.appendChild(el('div', { class: 'note' }, [
         el('strong', {}, [week + '주차 재평가: ']), '지금은 각 활동을 어떻게 하고 있나요? 선택하면 아래 비교표에 반영됩니다.'
+      ]));
+      // 낙상 발생 기록 (낙상위험 모듈)
+      card.appendChild(el('div', { class: 'matrix-row fall-track-row' }, [
+        el('div', { class: 'row-label' }, ['🛡️ 이번 주 낙상 발생']),
+        choiceGroup(
+          [{ value: 0, label: '없음' }, { value: 1, label: '1회' }, { value: 2, label: '2회 이상' }],
+          state.fallTrack[week],
+          function (v) {
+            state.fallTrack[week] = (state.fallTrack[week] === v) ? undefined : v;
+            saveState(); render();
+          }
+        )
       ]));
       limited.forEach(function (r) {
         var key = perfKey(r.space.id, r.task.id, r.activity.id);
@@ -1745,9 +1800,12 @@
    * 화면 3 : 솔루션 제안서 (양식지 3)
    * =======================================================*/
   function renderResult() {
-    upsertCurrentRecord(); // 결과에 도달하면 기록에 자동 저장/갱신
     var limited = collectLimitedActivities();
     var rec = computeControlRecommendation();
+    var fall = computeFallRisk();
+    state.fallRisk = fallRiskFlat(fall); // 판정 결과를 평탄 키로 저장 (localStorage·JSON 내보내기 포함)
+    saveState(); // fallRisk 갱신분을 즉시 저장 (렌더 선행 저장보다 늦게 계산되므로)
+    upsertCurrentRecord(); // 결과에 도달하면 기록에 자동 저장/갱신 (fallRisk 포함)
     var container = el('div', {}, []);
     var m = state.meta;
 
@@ -1793,6 +1851,9 @@
         ])
       ]));
     }
+
+    /* [요약] 낙상위험 등급 배지 */
+    sec('summary', renderFallBadgeCard(fall));
 
     /* [요약] 대상자의 주요구 */
     var goals = confirmedNeeds();
@@ -1883,6 +1944,9 @@
 
     /* [설계도] 공간별 로우테크 환경수정 */
     if (limited.length > 0) sec('plan', renderLowtechCard(limited));
+
+    /* [설계도] 낙상위험 점검 결과 (규칙 엔진) */
+    if (hasFallData()) sec('plan', renderFallRiskCard(fall, rec));
 
     /* [설계도] 환경 안전·수정 (현장 점검에서 선택된 항목) */
     if (collectEnvChecks().length > 0) sec('plan', renderEnvCheckCard());
@@ -2196,6 +2260,247 @@
     return out;
   }
 
+  /* =========================================================
+   * 낙상위험 모듈 — 근거 기반 규칙 엔진 (비학습형)
+   *  환경 점수: 환경 안전 점검에서 "예"로 답한 항목의 가중치 합 (영역별 소계)
+   *  개인 점수: 낙상 이력 + 두려움 + 야간 이동 + 건강요인 + 실내 보행 + 연령 + 장애 유형
+   *  종합 등급: FALL_THRESHOLDS(data.js) 기준 낮음/중간/높음 + 상향 규칙
+   *  ※ 학습형 모델이 아니라 임상 규칙 기반이므로 모든 판정에 근거 문장을 생성한다.
+   * =======================================================*/
+  var FALL_GRADE_WORD = { low: '낮음', mid: '중간', high: '높음' };
+
+  function hasFallData() {
+    var p = state.personal;
+    if (p.fallHistory || p.fallFear || p.nightTrips || (p.fallHealth && p.fallHealth.length)) return true;
+    return Object.keys(state.envCheck || {}).length > 0;
+  }
+
+  function computeFallRisk() {
+    var p = state.personal;
+    var T = D.FALL_THRESHOLDS;
+
+    /* --- 환경 점수 (영역별 소계) --- */
+    var byDomain = {}, domainMax = {};
+    D.fallDomains.forEach(function (d) { byDomain[d] = { score: 0, count: 0, items: [] }; domainMax[d] = 0; });
+    var highEnvYes = 0; // "예"로 답한 고위험(w2) 항목 수
+    var envScore = 0, envMax = 0;
+    D.spaces.forEach(function (space) {
+      (D.environmentChecklist[space.id] || []).forEach(function (item) {
+        var meta = D.fallRiskMeta[item.id];
+        if (!meta) return; // 낙상 무관 항목 제외
+        envMax += meta.weight;
+        domainMax[meta.domain] += meta.weight;
+        if (state.envCheck[space.id + '::' + item.id] === 'yes') {
+          envScore += meta.weight;
+          byDomain[meta.domain].score += meta.weight;
+          byDomain[meta.domain].count += 1;
+          byDomain[meta.domain].items.push({ space: space, item: item, weight: meta.weight });
+          if (meta.weight >= 2) highEnvYes++;
+        }
+      });
+    });
+
+    /* --- 개인 점수 --- */
+    var parts = [];
+    function pt(label, n) { if (n > 0) parts.push({ label: label, pts: n }); return n; }
+    var histPts = { none: 0, one: 1, more: 2 }[p.fallHistory] || 0;
+    var fearPts = { none: 0, sometimes: 1, often: 2 }[p.fallFear] || 0;
+    var nightPts = { none: 0, few: 1, many: 2 }[p.nightTrips] || 0;
+    var health = (p.fallHealth || []).filter(function (v) { return v !== 'none'; });
+    var mobPts = { good: 0, assisted: 1, unable: 2 }[p.indoorMobility] || 0;
+    var agePts = p.age === '70' ? 1 : (p.age === '80' ? 2 : 0);
+    var typePts = (p.disabilityType === 'physical' || p.disabilityType === 'brain') ? 1 : 0;
+    var personalScore =
+      pt('낙상 이력', histPts) + pt('낙상 두려움', fearPts) + pt('야간 이동', nightPts) +
+      pt('건강요인 ' + health.length + '개', health.length) + pt('실내 보행 제한', mobPts) +
+      pt('연령', agePts) + pt('장애 유형', typePts);
+
+    /* --- 등급 판정 --- */
+    function gradeOf(score, th) { return score >= th.high ? 'high' : (score >= th.mid ? 'mid' : 'low'); }
+    var pGrade = gradeOf(personalScore, T.personal);
+    var eGrade = gradeOf(envScore, T.env);
+    var order = { low: 0, mid: 1, high: 2 };
+    var grade = order[pGrade] >= order[eGrade] ? pGrade : eGrade;
+    var override = null;
+    if (p.fallHistory === 'more') { grade = 'high'; override = '낙상 이력 2회 이상'; }
+    else if (p.fallHistory === 'one' && highEnvYes > 0) { grade = 'high'; override = '낙상 이력 1회 + 고위험 환경 요인 ' + highEnvYes + '개'; }
+    else if (pGrade === 'mid' && eGrade === 'mid') { grade = 'high'; override = '개인·환경 위험이 모두 중간 수준'; }
+
+    /* --- 판정 근거 문장 --- */
+    var reasons = [];
+    if (override) reasons.push(override + ' → 상향 규칙 적용');
+    if (histPts === 2) reasons.push('지난 1년 낙상 2회 이상');
+    else if (histPts === 1) reasons.push('지난 1년 낙상 1회');
+    if (fearPts === 2) reasons.push('낙상 두려움으로 활동 제한 잦음');
+    if (nightPts === 2) reasons.push('야간 이동 3회 이상');
+    else if (nightPts === 1) reasons.push('야간 이동 1~2회');
+    if (health.length) reasons.push('어지럼·저혈압·시력 등 건강요인 ' + health.length + '개');
+    if (mobPts === 2) reasons.push('실내 보행 못함');
+    else if (mobPts === 1) reasons.push('실내 보행에 도움 필요');
+    var topDomains = D.fallDomains.filter(function (d) { return byDomain[d].score > 0; })
+      .sort(function (a, b) { return byDomain[b].score - byDomain[a].score; }).slice(0, 3);
+    if (topDomains.length) {
+      reasons.push('환경 위험: ' + topDomains.map(function (d) { return d + ' ' + byDomain[d].score + '점'; }).join(' · '));
+    }
+    if (reasons.length === 0) reasons.push('확인된 낙상위험 요인이 없습니다');
+
+    return {
+      personalScore: personalScore, personalParts: parts, personalGrade: pGrade,
+      envScore: envScore, envMax: envMax, byDomain: byDomain, domainMax: domainMax,
+      envGrade: eGrade, highEnvYes: highEnvYes,
+      grade: grade, gradeWord: FALL_GRADE_WORD[grade], override: override,
+      reasons: reasons
+    };
+  }
+
+  /* 낙상예방 기기 추천 — 제어 인터페이스 결정 트리(손·음성·Wi-Fi)를 통과시켜
+   * 대상자가 실제로 쓸 수 있는 형태로만 추천 (활동별 큐레이션 원칙: 명시 지정) */
+  function computeFallRecs(fall, rec) {
+    var p = state.personal, env = state.environment;
+    var out = [];
+    function add(name, why) {
+      for (var i = 0; i < out.length; i++) {
+        if (out[i].name === name) { if (out[i].why.indexOf(why) < 0) out[i].why += ' · ' + why; return; }
+      }
+      out.push({ name: name, why: why, tier: D.deviceTier[name] || 'beginner', net: D.deviceConnectivity[name] || 'wifi' });
+    }
+    var voiceOK = p.communication === 'good' && env.wifi !== 'no';
+    var nightMoves = p.nightTrips === 'few' || p.nightTrips === 'many';
+    var bedroomYes = (fall.byDomain['조명'].items.concat(fall.byDomain['이동·보행보조'].items, fall.byDomain['가구·배치'].items))
+      .some(function (r) { return r.space.id === 'bedroom'; });
+    var bathYes = fall.byDomain['욕실·화장실'].score > 0;
+
+    if (nightMoves || fall.byDomain['조명'].score > 0) {
+      add('모션 센서 야간등', '야간 이동 시 침실→화장실 동선을 자동으로 밝힘');
+      if (voiceOK) add('스마트 스피커', '자리에서 음성으로 조명 제어(이동 없이)');
+    }
+    if (p.fallHistory === 'one' || p.fallHistory === 'more' || fall.grade === 'high') {
+      add('낙상 감지 스마트워치', '낙상 감지 시 보호자에게 자동 알림');
+      if (voiceOK) add('스마트 스피커', '음성 SOS 비상 호출');
+      else add('스마트 버튼(비상호출)', '누르기만 하면 보호자 호출(음성·스마트폰 불필요)');
+    }
+    if (bedroomYes) add('침대 이탈 센서', '침대에서 일어나면 조명 자동 점등');
+    if (bathYes) add('모션 센서 야간등', '욕실 진입 시 자동 점등');
+    return out;
+  }
+
+  // 판정 결과를 평탄 키로 변환 (localStorage·JSON 내보내기 → 표 분석용)
+  function fallRiskFlat(fall) {
+    var p = state.personal;
+    var domainKey = {
+      '바닥·문턱': 'floor', '조명': 'light', '가구·배치': 'furniture',
+      '욕실·화장실': 'bathroom', '이동·보행보조': 'mobility', '수납·손닿음': 'storage', '기타': 'etc'
+    };
+    var flat = {
+      fall_grade: fall.gradeWord,
+      fall_personal_score: fall.personalScore,
+      fall_env_score: fall.envScore,
+      fall_env_max: fall.envMax,
+      fall_history: p.fallHistory || '',
+      fall_fear: p.fallFear || '',
+      fall_night_trips: p.nightTrips || '',
+      fall_health: (p.fallHealth || []).join('|'),
+      fall_rationale: fall.reasons.join('; ')
+    };
+    D.fallDomains.forEach(function (d) { flat['fall_env_' + domainKey[d]] = fall.byDomain[d].score; });
+    ['1', '2', '3', '4'].forEach(function (w) {
+      flat['fall_track_w' + w] = (state.fallTrack && state.fallTrack[w] != null) ? state.fallTrack[w] : '';
+    });
+    return flat;
+  }
+
+  /* [요약] 낙상위험 등급 배지 카드 */
+  function renderFallBadgeCard(fall) {
+    if (!hasFallData()) return null;
+    return el('div', { class: 'card fall-summary-card' }, [
+      el('div', { class: 'fall-badge-row' }, [
+        el('span', { class: 'fall-badge fall-' + fall.grade }, ['낙상위험 ' + fall.gradeWord]),
+        el('span', { class: 'fall-engine-note' }, ['근거 기반 규칙 엔진(비학습형) 판정'])
+      ]),
+      el('p', { class: 'fall-rationale' }, [fall.reasons.slice(0, 2).join(' · ')])
+    ]);
+  }
+
+  /* [설계도] 낙상위험 점검 결과 카드 */
+  function renderFallRiskCard(fall, rec) {
+    var card = el('div', { class: 'card' }, [
+      el('h3', {}, ['낙상위험 점검 결과']),
+      el('p', { class: 'section-guide' }, [
+        '환경 안전 점검(34항목 중 낙상 관련 29항목)과 개인 요인으로 산출한 낙상위험입니다. ',
+        el('b', {}, ['근거 기반 규칙 엔진(비학습형)']),
+        '으로 판정하며, 모든 결과에 판정 근거가 표시됩니다.'
+      ])
+    ]);
+
+    // 등급 + 점수 요약
+    card.appendChild(el('div', { class: 'fall-badge-row' }, [
+      el('span', { class: 'fall-badge fall-' + fall.grade }, ['종합 ' + fall.gradeWord]),
+      el('span', { class: 'fall-score-chip' }, ['개인 ' + fall.personalScore + '점 (' + FALL_GRADE_WORD[fall.personalGrade] + ')']),
+      el('span', { class: 'fall-score-chip' }, ['환경 ' + fall.envScore + '/' + fall.envMax + '점 (' + FALL_GRADE_WORD[fall.envGrade] + ')'])
+    ]));
+    card.appendChild(el('div', { class: 'fall-reasons' }, [
+      el('b', {}, ['판정 근거: ']), fall.reasons.join(' · ')
+    ]));
+
+    // 영역별 막대
+    var bars = el('div', { class: 'fall-bars' }, []);
+    D.fallDomains.forEach(function (d) {
+      var s = fall.byDomain[d].score, mx = fall.domainMax[d];
+      if (mx === 0) return;
+      var pctW = Math.round(s / mx * 100);
+      bars.appendChild(el('div', { class: 'fall-bar-row' }, [
+        el('span', { class: 'fall-bar-label' }, [d]),
+        el('div', { class: 'fall-bar-track' }, [
+          el('div', { class: 'fall-bar-fill' + (s > 0 ? '' : ' zero'), style: 'width:' + Math.max(pctW, s > 0 ? 8 : 0) + '%' }, [])
+        ]),
+        el('span', { class: 'fall-bar-score' }, [s + '/' + mx])
+      ]));
+    });
+    card.appendChild(el('div', { class: 'fall-sub' }, ['영역별 환경 위험 점수']));
+    card.appendChild(bars);
+
+    // "예" 항목 목록 + 권장 수정
+    var yesItems = [];
+    D.fallDomains.forEach(function (d) { fall.byDomain[d].items.forEach(function (r) { yesItems.push(r); }); });
+    if (yesItems.length) {
+      card.appendChild(el('div', { class: 'fall-sub' }, ['해당된 환경 위험 요인과 권장 수정']));
+      yesItems.forEach(function (r) {
+        card.appendChild(el('div', { class: 'envc-item' }, [
+          el('div', { class: 'envc-q' }, ['⚠️ ' + r.space.label + ' · ' + r.item.q + (r.weight >= 2 ? ' (고위험)' : '')]),
+          el('div', { class: 'envc-tool' }, [el('span', { class: 'lt-tag' }, ['수정']), ' ', r.item.tool]),
+          el('div', { class: 'lt-why' }, [r.item.apply])
+        ]));
+      });
+    }
+    if (fall.byDomain['바닥·문턱'].score > 0) {
+      card.appendChild(el('div', { class: 'note' }, [
+        el('strong', {}, ['로우테크 우선: ']),
+        '바닥·문턱 위험이 확인되어 문턱 경사판·미끄럼방지 매트 등 물리적 수정을 스마트 기기보다 우선 적용하세요.'
+      ]));
+    }
+
+    // 개인 요인 요약
+    if (fall.personalParts.length) {
+      card.appendChild(el('div', { class: 'fall-sub' }, ['개인 위험 요인']));
+      card.appendChild(el('div', { class: 'lt-supports' }, fall.personalParts.map(function (pp) {
+        return el('span', { class: 'skill-chip mini blocked' }, [pp.label + ' +' + pp.pts]);
+      })));
+    }
+
+    // 낙상예방 기기 추천
+    var recs = computeFallRecs(fall, rec);
+    if (recs.length) {
+      card.appendChild(el('div', { class: 'fall-sub' }, ['낙상예방 스마트 기기 추천']));
+      recs.forEach(function (r2) {
+        card.appendChild(el('div', { class: 'lowtech-item fall-rec' }, [
+          el('div', { class: 'lt-name' }, ['🛡️ ' + r2.name, el('span', { class: 'fall-tag' }, ['낙상예방'])]),
+          el('div', { class: 'lt-why' }, [r2.why])
+        ]));
+      });
+    }
+    return card;
+  }
+
   function renderEnvCheckCard() {
     var picks = collectEnvChecks();
     var card = el('div', { class: 'card' }, [
@@ -2215,8 +2520,9 @@
         el('div', { class: 'sp-title' }, [space.label + ' (' + rows.length + ')'])
       ]);
       rows.forEach(function (p) {
+        var isFall = !!D.fallRiskMeta[p.item.id]; // 낙상위험 관련 항목 표시
         block.appendChild(el('div', { class: 'envc-item' }, [
-          el('div', { class: 'envc-q' }, ['✔ ' + p.item.q]),
+          el('div', { class: 'envc-q' }, ['✔ ' + p.item.q + (isFall ? ' ' : ''), isFall ? el('span', { class: 'fall-mini', title: '낙상위험 관련' }, ['⚠️ 낙상']) : null]),
           el('div', { class: 'envc-tool' }, [el('span', { class: 'lt-tag' }, ['도구']), ' ', p.item.tool]),
           el('div', { class: 'lt-why' }, [p.item.apply])
         ]));
@@ -2441,6 +2747,20 @@
     // 숙련자 키트 (확장 구성) — 숙련자 등급일 때 강조, 초보자 등급일 때는 '확장 옵션'으로 표기
     var advTitle = kitKey === 'advanced' ? '확장 구성 (숙련자 키트)' : '확장 옵션 (숙련자 키트 · 필요 시)';
     card.appendChild(deviceTierBlock(advTitle, advancedDevs, 'advanced'));
+
+    // 낙상예방 추천 기기 (낙상위험 모듈 규칙 기반)
+    if (hasFallData()) {
+      var fallRecs = computeFallRecs(computeFallRisk(), rec);
+      if (fallRecs.length) {
+        card.appendChild(el('div', { class: 'fall-sub', style: 'margin-top:14px' }, ['낙상예방 추가 구성']));
+        fallRecs.forEach(function (fr) {
+          card.appendChild(el('div', { class: 'lowtech-item fall-rec' }, [
+            el('div', { class: 'lt-name' }, ['🛡️ ' + fr.name, el('span', { class: 'fall-tag' }, ['낙상예방'])]),
+            el('div', { class: 'lt-why' }, [fr.why])
+          ]));
+        });
+      }
+    }
 
     return card;
   }
