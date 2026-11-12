@@ -1107,3 +1107,15 @@ body.splash-mode main { padding: 0; max-width: 100%; }
 .ref-table th { background: #f1f5f9; font-weight: 700; color: var(--primary-dark); }
 .ref-table td.ineff { color: var(--danger); }
 .ref-bf { margin-top: 10px; font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+
+/* 임베드 환경 토스트 알림 */
+.app-toast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+  max-width: min(86vw, 420px); z-index: 9999;
+  background: rgba(40, 36, 32, 0.95); color: #fff;
+  font-size: 0.85rem; line-height: 1.5; font-weight: 600;
+  padding: 10px 16px; border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  animation: toast-in 0.25s ease;
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }

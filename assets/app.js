@@ -143,8 +143,43 @@
       (state.meta.org || state.meta.needsExtra);
   }
 
+  /* ---------- 샌드박스(클로드 아티팩트 등 임베드) 환경 보정 ----------
+   * 임베드 프레임에서는 confirm/alert/다운로드/인쇄가 차단되므로
+   * 토스트 알림·클립보드 복사로 대체한다. 일반 배포에서는 기존 동작 유지. */
+  function isEmbedded() {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  }
+  function toast(msg) {
+    var t = document.createElement('div');
+    t.className = 'app-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 3500);
+  }
+  function notify(msg) {
+    if (isEmbedded()) { toast(msg); return; }
+    try { window.alert(msg); } catch (e) { toast(msg); }
+  }
+  function askConfirm(msg) {
+    try {
+      if (window.confirm(msg)) return true;
+      // 임베드 프레임은 확인창이 뜨지 않고 항상 false → 안내 후 진행으로 간주
+      if (isEmbedded()) { return true; }
+      return false;
+    } catch (e) { return true; }
+  }
+
   function exportJSON() {
     var payload = JSON.stringify(state, null, 2);
+    if (isEmbedded()) {
+      // 임베드 환경: 파일 다운로드가 차단되므로 클립보드로 내보내기
+      try {
+        navigator.clipboard.writeText(payload).then(function () {
+          toast('평가 JSON을 클립보드에 복사했어요. 메모장·메신저에 붙여넣어 보관하세요.');
+        }, function () { toast('복사에 실패했어요. 정식 배포 주소에서 내보내기를 이용해주세요.'); });
+      } catch (e) { toast('이 환경에서는 내보내기가 제한돼요. 정식 배포 주소에서 이용해주세요.'); }
+      return;
+    }
     var blob = new Blob([payload], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -176,7 +211,7 @@
         saveState();
         render();
       } catch (err) {
-        window.alert('불러오기 실패: 올바른 평가 파일(JSON)이 아닙니다.');
+        notify('불러오기 실패: 올바른 평가 파일(JSON)이 아닙니다.');
       }
     };
     reader.readAsText(file);
@@ -626,7 +661,7 @@
           el('button', {
             class: 'record-del', type: 'button', 'aria-label': '삭제',
             onclick: function () {
-              if (window.confirm('이 평가 기록을 삭제할까요? 되돌릴 수 없습니다.')) {
+              if (askConfirm('이 평가 기록을 삭제할까요? 되돌릴 수 없습니다.')) {
                 deleteRecord(r.recordId); render();
               }
             }
@@ -709,7 +744,7 @@
     if (SURVEY_URL) {
       window.open(SURVEY_URL, '_blank', 'noopener');
     } else {
-      window.alert('자세한 사용 후기는 준비 중입니다. 곧 제공될 예정입니다.\n지금은 위의 "간단한 사용후기"로 의견을 보내주세요.');
+      notify('자세한 사용 후기는 준비 중입니다. 지금은 위의 "간단한 사용후기"로 의견을 보내주세요.');
     }
   }
 
@@ -1984,7 +2019,7 @@
       { label: '← 이전', variant: 'btn-ghost', align: 'left', onClick: function () { go('personal'); } },
       { label: '불러오기', variant: '', onClick: function () { document.getElementById('import-file-result').click(); } },
       { label: '내보내기(JSON)', variant: '', onClick: exportJSON },
-      { label: '인쇄 / PDF', variant: '', onClick: function () { window.print(); } },
+      { label: '인쇄 / PDF', variant: '', onClick: function () { try { window.print(); } catch (e) { toast('이 환경에서는 인쇄가 지원되지 않아요. 정식 배포 주소에서 인쇄해주세요.'); } } },
       { label: '새 평가', variant: 'btn-primary', onClick: resetAll }
     ]);
   }
@@ -2803,7 +2838,7 @@
   }
 
   function resetAll() {
-    if (!window.confirm('현재 평가 내용을 모두 지우고 새 평가를 시작할까요? (저장된 내용도 삭제됩니다)')) return;
+    if (!askConfirm('현재 평가 내용을 모두 지우고 새 평가를 시작할까요? (저장된 내용도 삭제됩니다)')) return;
     state = blankState();
     openSpaces = {};
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
